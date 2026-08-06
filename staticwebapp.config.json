@@ -1,0 +1,23 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/css/*", "/js/*", "*.{svg,ico,png,jpg,jpeg,webp,avif,mp4,webm}"]
+  },
+  "mimeTypes": {
+    ".svg": "image/svg+xml",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".webp": "image/webp",
+    ".avif": "image/avif",
+    ".json": "application/json"
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin"
+  },
+  "routes": [
+    { "route": "/assets/*", "headers": { "Cache-Control": "public, max-age=2592000" } },
+    { "route": "/css/*",    "headers": { "Cache-Control": "public, max-age=604800" } },
+    { "route": "/js/*",     "headers": { "Cache-Control": "public, max-age=604800" } }
+  ]
+}
