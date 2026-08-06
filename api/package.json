@@ -1,0 +1,14 @@
+{
+  "name": "oresto-api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/functions/*.js",
+  "scripts": {
+    "start": "func start",
+    "seed": "node scripts/seed-menu.js"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.2.0",
+    "@azure/functions": "^4.6.0"
+  }
+}

@@ -1,7 +1,8 @@
 {
+  "platform": { "apiRuntime": "node:20" },
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/css/*", "/js/*", "*.{svg,ico,png,jpg,jpeg,webp,avif,mp4,webm}"]
+    "exclude": ["/api/*", "/assets/*", "/css/*", "/js/*", "*.{svg,ico,png,jpg,jpeg,webp,avif,mp4,webm}"]
   },
   "mimeTypes": {
     ".svg": "image/svg+xml",
@@ -16,6 +17,7 @@
     "Referrer-Policy": "strict-origin-when-cross-origin"
   },
   "routes": [
+    { "route": "/api/*", "headers": { "Cache-Control": "no-store" } },
     { "route": "/assets/*", "headers": { "Cache-Control": "public, max-age=2592000" } },
     { "route": "/css/*",    "headers": { "Cache-Control": "public, max-age=604800" } },
     { "route": "/js/*",     "headers": { "Cache-Control": "public, max-age=604800" } }

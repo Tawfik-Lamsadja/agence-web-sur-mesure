@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "",
+
+    "COSMOS_ENDPOINT": "https://VOTRE-COMPTE.documents.azure.com:443/",
+    "COSMOS_KEY": "votre-clé-primaire",
+    "COSMOS_DATABASE": "oresto",
+
+    "BREVO_API_KEY": "votre-clé-brevo",
+    "BREVO_SENDER_EMAIL": "adresse-vérifiée@exemple.be",
+    "BREVO_SENDER_NAME": "Ô'resto (démonstration)"
+  }
+}

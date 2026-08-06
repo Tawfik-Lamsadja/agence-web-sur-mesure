@@ -907,6 +907,27 @@ p { max-width: var(--w-text); }
 .field input::placeholder { color: var(--c-mauve-dim); }
 .field__hint { margin: 0; font-size: 0.74rem; color: var(--c-bone-dim); }
 .field__err { margin: 0; font-size: 0.78rem; color: var(--c-err); }
+
+.form__error {
+  margin: 0 0 var(--s-2);
+  padding: 10px 12px;
+  border-left: 2px solid var(--c-err);
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--c-err);
+}
+
+/* Le temps d'un aller-retour réseau, la commande reste visible mais inerte. */
+.is-busy { position: relative; opacity: 0.55; pointer-events: none; }
+
+.chip.is-loading, .seat.is-loading { opacity: 0.4; }
+.slots__wait {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--c-bone-dim);
+  font-style: italic;
+}
 .field input[aria-invalid="true"] { border-color: var(--c-err); }
 
 .field--check {
@@ -1129,6 +1150,14 @@ p { max-width: var(--w-text); }
 
 .cart__pickup { display: grid; gap: 6px; padding-top: var(--s-2); }
 .cart__pickup label { font-size: 0.78rem; letter-spacing: 0.08em; }
+
+.cart__contact { padding-top: var(--s-3); }
+.cart__contact-title {
+  margin: 0 0 var(--s-2);
+  font-family: var(--f-display);
+  font-size: 1.05rem;
+  font-weight: 400;
+}
 
 .cart__foot { flex: none; padding: var(--s-3) var(--s-4); border-top: 1px solid var(--c-line); }
 .cart__total {

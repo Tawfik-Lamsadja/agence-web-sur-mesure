@@ -17,25 +17,32 @@
   var euroCent = new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' });
   function prix(cents) { return (cents % 100 === 0 ? euroRond : euroCent).format(cents / 100); }
 
-  function heure(d) {
-    var h = d.getHours(), m = d.getMinutes();
-    return h + 'h' + (m < 10 ? '0' + m : m);
-  }
   function jourLong(d) { return d.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' }); }
+
+  var FUSEAU = 'Europe/Brussels';
+  var JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  var INDEX_JOUR = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  var fmtBruxelles = new Intl.DateTimeFormat('en-CA', {
+    timeZone: FUSEAU,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false
+  });
+
+  function partsBruxelles(d) {
+    var out = {};
+    fmtBruxelles.formatToParts(d).forEach(function (p) { out[p.type] = p.value; });
+    return {
+      jour: out.year + '-' + out.month + '-' + out.day,
+      heures: Number(out.hour) % 24,
+      minutes: Number(out.minute),
+      jourSemaine: INDEX_JOUR[out.weekday]
+    };
+  }
+
+  function jourBruxelles(d) { return partsBruxelles(d).jour; }
   function cle(d) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-
-  /* Empreinte stable : les mêmes disponibilités reviennent pour une même date. */
-  function empreinte(str) {
-    var h = 2166136261, i;
-    for (i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return (h >>> 0);
-  }
-
-  function ref(prefixe) {
-    var base = (Date.now() % 1679616).toString(36) + Math.floor(Math.random() * 36).toString(36);
-    return prefixe + '-' + base.toUpperCase().slice(-5);
-  }
 
   /* ===================================================================
      1. Garde-fous média : un fichier absent disparaît sans laisser de trace
@@ -196,74 +203,61 @@
   }
 
   /* ===================================================================
+     5 bis. Accès à l'API
+     =================================================================== */
+  var PANNE = 'Le service est momentanément indisponible. Réessayez dans un instant.';
+
+  function requete(methode, chemin, corps) {
+    var opts = { method: methode, headers: {} };
+    if (corps) {
+      opts.headers['content-type'] = 'application/json';
+      opts.body = JSON.stringify(corps);
+    }
+    return fetch('/api/' + chemin, opts).then(function (r) {
+      return r.text().then(function (brut) {
+        var data = {};
+        try { data = brut ? JSON.parse(brut) : {}; } catch (e) { /* réponse non JSON */ }
+        if (!r.ok) {
+          var err = new Error(data.message || PANNE);
+          err.code = data.erreur;
+          err.champs = data.champs;
+          err.statut = r.status;
+          throw err;
+        }
+        return data;
+      });
+    });
+  }
+
+  var API = {
+    get: function (chemin) { return requete('GET', chemin, null); },
+    post: function (chemin, corps) { return requete('POST', chemin, corps); }
+  };
+
+  function montreErreur(el, message) {
+    if (!el) return;
+    el.textContent = message || '';
+    el.hidden = !message;
+    if (message) say(message);
+  }
+
+  /* ===================================================================
      6. La carte
      =================================================================== */
-  var CARTE = [
-    {
-      id: 'sashimi', nom: 'Sashimi', col: 0,
-      note: 'Découpés à la commande, jamais à l\'avance.',
-      items: [
-        { id: 'sa-sau', nom: 'Saumon, six tranches', desc: 'Élevage des Féroé, taillé au yanagiba.', prix: 1400 },
-        { id: 'sa-tho', nom: 'Thon rouge, six tranches', desc: 'Longe du jour, selon arrivage.', prix: 1800 },
-        { id: 'sa-dau', nom: 'Daurade, six tranches', desc: 'Maturée vingt-quatre heures, zeste de yuzu.', prix: 1600 },
-        { id: 'sa-ass', nom: 'Assortiment du jour, douze tranches', desc: 'Trois poissons, choisis le matin même.', prix: 2800 }
-      ]
-    },
-    {
-      id: 'nigiri', nom: 'Nigiri', col: 0,
-      note: 'À la pièce. Le riz est assaisonné toutes les deux heures.',
-      items: [
-        { id: 'ni-sau', nom: 'Saumon', desc: '', prix: 350 },
-        { id: 'ni-tho', nom: 'Thon rouge', desc: '', prix: 450 },
-        { id: 'ni-dau', nom: 'Daurade', desc: '', prix: 400 },
-        { id: 'ni-cre', nom: 'Crevette', desc: '', prix: 350 },
-        { id: 'ni-ang', nom: 'Anguille laquée', desc: 'Sauce maison, réduite chaque lundi.', prix: 500 },
-        { id: 'ni-tam', nom: 'Omelette tamago', desc: '', prix: 300 }
-      ]
-    },
-    {
-      id: 'rouleaux', nom: 'Rouleaux', col: 0,
-      note: '',
-      items: [
-        { id: 'ro-con', nom: 'Maki concombre, six pièces', desc: '', prix: 600 },
-        { id: 'ro-sau', nom: 'Maki saumon, six pièces', desc: '', prix: 800 },
-        { id: 'ro-cal', nom: 'California crabe avocat, six pièces', desc: 'Crabe entier, jamais de surimi.', prix: 1000 },
-        { id: 'ro-fut', nom: 'Futomaki végétal, quatre pièces', desc: 'Shiitaké, épinard, carotte, tamago.', prix: 900 }
-      ]
-    },
-    {
-      id: 'chauds', nom: 'Plats chauds', col: 1,
-      note: '',
-      items: [
-        { id: 'ch-gyo', nom: 'Gyoza au porc, cinq pièces', desc: 'Pliés le matin, poêlés à la commande.', prix: 900 },
-        { id: 'ch-ram', nom: 'Ramen shoyu', desc: 'Bouillon de douze heures, servi à table uniquement.', prix: 1700, emporter: false },
-        { id: 'ch-tat', nom: 'Bœuf tataki', desc: 'Filet saisi trente secondes, ponzu.', prix: 1900 },
-        { id: 'ch-aub', nom: 'Aubergine au miso', desc: 'Miso rouge, cuisson au four à bois.', prix: 1100 }
-      ]
-    },
-    {
-      id: 'desserts', nom: 'Desserts', col: 1,
-      note: '',
-      items: [
-        { id: 'de-moc', nom: 'Mochi, deux pièces', desc: 'Sésame noir ou matcha.', prix: 600 },
-        { id: 'de-cre', nom: 'Crème au thé matcha', desc: '', prix: 700 },
-        { id: 'de-yuz', nom: 'Sorbet yuzu', desc: '', prix: 600 }
-      ]
-    },
-    {
-      id: 'boissons', nom: 'Boissons', col: 1,
-      note: '',
-      items: [
-        { id: 'bo-sen', nom: 'Thé sencha', desc: 'En théière, réinfusé autant que vous voulez.', prix: 400 },
-        { id: 'bo-bie', nom: 'Bière japonaise, 33 cl', desc: '', prix: 500 },
-        { id: 'bo-sak', nom: 'Saké junmai, 12 cl', desc: 'Servi frais, préfecture de Niigata.', prix: 900 },
-        { id: 'bo-eau', nom: 'Eau plate ou pétillante, 50 cl', desc: '', prix: 350 }
-      ]
-    }
-  ];
-
+  var CARTE = [];
   var PAR_ID = {};
-  CARTE.forEach(function (c) { c.items.forEach(function (i) { PAR_ID[i.id] = i; }); });
+
+  /* La carte vit en base : elle se modifie sans repasser par le code. */
+  function chargeCarte() {
+    return API.get('menu').then(function (data) {
+      CARTE = data.categories || [];
+      PAR_ID = {};
+      CARTE.forEach(function (c) {
+        c.items.forEach(function (i) { PAR_ID[i.id] = i; });
+      });
+      return CARTE;
+    });
+  }
 
   function carteEditoriale() {
     var hote = $('#carte-liste');
@@ -428,18 +422,7 @@
   /* ===================================================================
      8. Réservation
      =================================================================== */
-  var TABLES = [
-    { id: 'c1', nom: 'Comptoir, 1 et 2', cap: 2, x: 8,  y: 15, w: 23, h: 15 },
-    { id: 'c2', nom: 'Comptoir, 3 à 5',  cap: 3, x: 33, y: 15, w: 27, h: 15 },
-    { id: 'c3', nom: 'Comptoir, 6 à 8',  cap: 3, x: 62, y: 15, w: 27, h: 15 },
-    { id: 't1', nom: 'Table 1, fenêtre', cap: 4, x: 10, y: 50, w: 24, h: 26 },
-    { id: 't2', nom: 'Table 2, salle',   cap: 4, x: 39, y: 55, w: 24, h: 26 },
-    { id: 't3', nom: 'Table 3, fond',    cap: 6, x: 68, y: 48, w: 26, h: 32 }
-  ];
-
-  var CRENEAUX_MIDI = ['12:00', '12:30', '13:00', '13:30'];
-  var CRENEAUX_SOIR = ['18:30', '19:00', '19:30', '20:00', '20:30'];
-  var ACOMPTE = 1000; /* 10 € par personne, en centimes */
+  var ACOMPTE = 1000; /* 10 € par personne, en centimes ; confirmé par l'API */
   var TOTAL_ETAPES = 6;
 
   var reservation = (function () {
@@ -448,24 +431,59 @@
     var moisVu = new Date();
     moisVu.setDate(1);
 
-    var elEtapes, elLabel, elEnso, elSuivant, elRetour, elResume, elPied;
+    /* Plan de salle et disponibilités du jour choisi, tels que l'API les donne. */
+    var TABLES = [];
+    var dispo = null;
+    var dispoPour = null;
+    var enVol = null;
+    var envoiEnCours = false;
+
+    var elEtapes, elLabel, elEnso, elSuivant, elRetour, elResume, elPied, elErreur;
 
     function ferme_jour(d) { var j = d.getDay(); return j === 0 || j === 1; }
 
-    function creneauLibre(d, h) { return empreinte(cle(d) + '|' + h) % 100 >= 22; }
+    function iso(d) {
+      var m = d.getMonth() + 1, j = d.getDate();
+      return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (j < 10 ? '0' + j : j);
+    }
+
+    /* Les disponibilités d'une date ne sont demandées qu'une fois. */
+    function assureDispo() {
+      if (!etat.date) return Promise.resolve(null);
+      var jour = iso(etat.date);
+      if (dispo && dispoPour === jour) return Promise.resolve(dispo);
+      if (enVol && enVol.jour === jour) return enVol.promesse;
+
+      var promesse = API.get('availability?date=' + encodeURIComponent(jour)).then(function (data) {
+        dispo = data;
+        dispoPour = jour;
+        TABLES = data.tables || [];
+        if (typeof data.acompteParPersonne === 'number') ACOMPTE = data.acompteParPersonne;
+        enVol = null;
+        return data;
+      }, function (e) {
+        enVol = null;
+        throw e;
+      });
+
+      enVol = { jour: jour, promesse: promesse };
+      return promesse;
+    }
+
+    function creneauxDu(service) {
+      if (!dispo || !dispo.creneaux) return [];
+      return dispo.creneaux.filter(function (c) { return c.service === service; });
+    }
+
+    function creneauLibre(c) { return !c.complet && !c.passe; }
 
     function tablesDispo() {
-      if (!etat.date || !etat.creneau) return [];
-      var base = cle(etat.date) + '|' + etat.creneau;
-      var libres = TABLES.filter(function (t) {
-        return t.cap >= etat.convives && empreinte(base + '|' + t.id) % 100 >= 30;
-      });
-      /* Le service ne refuse jamais tout le monde : une place reste ouverte. */
-      if (!libres.length) {
-        var secours = TABLES.filter(function (t) { return t.cap >= etat.convives; });
-        if (secours.length) libres = [secours[secours.length - 1]];
-      }
-      return libres.map(function (t) { return t.id; });
+      if (!dispo || !etat.creneau) return [];
+      var c = dispo.creneaux.filter(function (x) { return x.heure === etat.creneau; })[0];
+      if (!c) return [];
+      return TABLES.filter(function (t) {
+        return t.cap >= etat.convives && c.tablesPrises.indexOf(t.id) === -1;
+      }).map(function (t) { return t.id; });
     }
 
     /* ---------- calendrier ---------- */
@@ -505,6 +523,8 @@
               etat.date = jour;
               etat.creneau = null;
               etat.table = null;
+              dispo = null;
+              dispoPour = null;
               dessineCalendrier();
               valide();
             });
@@ -520,21 +540,43 @@
     }
 
     /* ---------- créneaux ---------- */
-    function dessineCreneaux() {
-      [['#slots-midi', CRENEAUX_MIDI], ['#slots-soir', CRENEAUX_SOIR]].forEach(function (paire) {
+    function attenteCreneaux(message) {
+      [['#slots-midi', 'midi'], ['#slots-soir', 'soir']].forEach(function (paire) {
         var hote = $(paire[0]);
         if (!hote) return;
         hote.textContent = '';
-        paire[1].forEach(function (h) {
+        var p = document.createElement('p');
+        p.className = 'slots__wait';
+        p.textContent = message;
+        hote.appendChild(p);
+      });
+    }
+
+    function dessineCreneaux() {
+      [['#slots-midi', 'midi'], ['#slots-soir', 'soir']].forEach(function (paire) {
+        var hote = $(paire[0]);
+        if (!hote) return;
+        hote.textContent = '';
+
+        var liste = creneauxDu(paire[1]);
+        if (!liste.length) {
+          var p = document.createElement('p');
+          p.className = 'slots__wait';
+          p.textContent = dispo && dispo.ferme ? 'Fermé ce jour-là.' : 'Plus rien de libre à ce service.';
+          hote.appendChild(p);
+          return;
+        }
+
+        liste.forEach(function (c) {
+          var h = c.heure;
           var b = document.createElement('button');
           b.type = 'button';
           b.className = 'chip';
-            b.textContent = h.replace(':', 'h');
-          var libre = etat.date ? creneauLibre(etat.date, h) : false;
+          b.textContent = h.replace(':', 'h');
           b.setAttribute('aria-pressed', etat.creneau === h ? 'true' : 'false');
-          if (!libre) {
+          if (!creneauLibre(c)) {
             b.disabled = true;
-            b.setAttribute('aria-label', h.replace(':', 'h') + ', complet');
+            b.setAttribute('aria-label', h.replace(':', 'h') + (c.passe ? ', déjà passé' : ', complet'));
           } else {
             b.addEventListener('click', function () {
               etat.creneau = h;
@@ -553,7 +595,8 @@
       var hote = $('#party');
       if (!hote) return;
       hote.textContent = '';
-      for (var n = 1; n <= 6; n++) {
+      var maxi = (dispo && dispo.convivesMax) || 6;
+      for (var n = 1; n <= maxi; n++) {
         (function (nb) {
           var b = document.createElement('button');
           b.type = 'button';
@@ -700,28 +743,78 @@
       elEnso.style.setProperty('--enso-progress', (i + 1) / TOTAL_ETAPES);
       elRetour.hidden = i === 0;
       elSuivant.textContent = i === TOTAL_ETAPES - 1 ? 'Confirmer et verser l\'acompte' : 'Continuer';
+      montreErreur(elErreur, '');
 
-      if (i === 1) dessineCreneaux();
-      if (i === 2) dessineConvives();
-      if (i === 3) dessinePlan();
-      if (i === 5) dessineRecap();
+      /* Les étapes 1 à 3 dépendent des disponibilités réelles du jour choisi. */
+      if (i >= 1 && i <= 3) {
+        if (i === 1) attenteCreneaux('Recherche des disponibilités…');
+        elSuivant.disabled = true;
+        assureDispo().then(function () {
+          if (etape !== i) return;
+          if (i === 1) dessineCreneaux();
+          if (i === 2) dessineConvives();
+          if (i === 3) dessinePlan();
+          valide();
+        }, function (e) {
+          if (etape !== i) return;
+          if (i === 1) attenteCreneaux('Disponibilités inaccessibles.');
+          montreErreur(elErreur, e.message);
+        });
+      } else {
+        if (i === 5) dessineRecap();
+        valide();
+      }
 
-      valide();
       var corps = $('.sheet__body', $('#sheet-reserver'));
       if (corps) corps.scrollTop = 0;
     }
 
     function confirme() {
       if (!champsValides(true)) { montre(4); return; }
-      var t = TABLES.filter(function (x) { return x.id === etat.table; })[0];
-      var reference = ref('OR');
-      $('#r-ref').textContent = reference;
-      $('#r-done-text').textContent =
-        'Nous vous attendons le ' + jourLong(etat.date) + ' à ' + etat.creneau.replace(':', 'h') +
-        ', ' + t.nom.toLowerCase() + ', pour ' + etat.convives + (etat.convives > 1 ? ' personnes' : ' personne') +
-        '. La confirmation part à l\'instant vers ' + etat.mail + '. Pour annuler, appelez le +32 2 512 04 77 au plus tard vingt-quatre heures avant.';
-      montre(TOTAL_ETAPES);
-      say('Réservation confirmée, référence ' + reference);
+      if (envoiEnCours) return;
+
+      envoiEnCours = true;
+      elSuivant.disabled = true;
+      elSuivant.textContent = 'Envoi…';
+      montreErreur(elErreur, '');
+
+      API.post('reservations', {
+        date: iso(etat.date),
+        creneau: etat.creneau,
+        tableId: etat.table,
+        convives: etat.convives,
+        nom: etat.nom,
+        tel: etat.tel,
+        mail: etat.mail,
+        note: etat.note
+      }).then(function (rep) {
+        envoiEnCours = false;
+        $('#r-ref').textContent = rep.reference;
+        $('#r-done-text').textContent =
+          'Nous vous attendons le ' + jourLong(etat.date) + ' à ' + etat.creneau.replace(':', 'h') +
+          ', ' + rep.tableNom.toLowerCase() + ', pour ' + rep.convives + (rep.convives > 1 ? ' personnes' : ' personne') +
+          '.' + (rep.emailEnvoye ? ' La confirmation part à l\'instant vers ' + etat.mail + '.' : '') +
+          ' Pour annuler, appelez le +32 2 512 04 77 au plus tard vingt-quatre heures avant.';
+        montre(TOTAL_ETAPES);
+        say('Réservation confirmée, référence ' + rep.reference);
+      }, function (e) {
+        envoiEnCours = false;
+        elSuivant.textContent = 'Confirmer et verser l\'acompte';
+        elSuivant.disabled = false;
+
+        /* La place vient d'être prise : le plan doit repartir des vraies données.
+           Le message est posé après le changement d'étape, qui remet à zéro. */
+        if (e.code === 'place_prise' || e.code === 'creneau_passe') {
+          dispo = null;
+          dispoPour = null;
+          etat.table = null;
+          montre(3);
+        } else if (e.champs) {
+          montre(4);
+          champsValides(true);
+        }
+        montreErreur(elErreur, e.message);
+      });
     }
 
     function init() {
@@ -735,6 +828,7 @@
       elRetour = $('#r-back');
       elResume = $('#r-summary');
       elPied = $('#reserver-foot');
+      elErreur = $('#r-error');
 
       $('#cal-prev').addEventListener('click', function () {
         moisVu = new Date(moisVu.getFullYear(), moisVu.getMonth() - 1, 1);
@@ -775,6 +869,8 @@
           etat = { date: null, creneau: null, convives: 2, table: null, nom: '', tel: '', mail: '', note: '' };
           ['r-nom', 'r-tel', 'r-mail', 'r-note'].forEach(function (id) { $('#' + id).value = ''; });
           $('#r-ok').checked = false;
+          dispo = null;
+          dispoPour = null;
           moisVu = new Date(); moisVu.setDate(1);
           dessineCalendrier();
           montre(0);
@@ -788,7 +884,8 @@
      =================================================================== */
   var panier = (function () {
     var lignes = {};
-    var elTiroir, elCompte, elEnso, elTotal, elListe, elVide, elValider, elFini;
+    var envoiEnCours = false;
+    var elTiroir, elCompte, elEnso, elTotal, elListe, elVide, elValider, elFini, elErreur;
 
     function nb() {
       var n = 0, k;
@@ -813,7 +910,7 @@
       $('#cart-open').classList.toggle('is-empty', n === 0);
       elEnso.style.setProperty('--enso-progress', Math.min(1, n / 8));
       elTotal.textContent = prix(total());
-      elValider.disabled = n === 0;
+      elValider.disabled = n === 0 || envoiEnCours;
       elVide.hidden = n > 0;
       elListe.textContent = '';
 
@@ -933,10 +1030,12 @@
       });
     }
 
+    /* Le comptoir vit à l'heure de Bruxelles, pas à celle du visiteur :
+       le serveur refuserait un retrait calculé dans un autre fuseau. */
     function ouvertureService(d) {
-      var j = d.getDay();
-      if (j === 0 || j === 1) return false;
-      var m = d.getHours() * 60 + d.getMinutes();
+      var p = partsBruxelles(d);
+      if (p.jourSemaine === 0 || p.jourSemaine === 1) return false;
+      var m = p.heures * 60 + p.minutes;
       return (m >= 720 && m <= 855) || (m >= 1110 && m <= 1335);
     }
 
@@ -955,12 +1054,13 @@
       var sel = $('#pickup-time');
       if (!sel) return;
       sel.textContent = '';
-      var auj = new Date();
+      var auj = jourBruxelles(new Date());
       heuresRetrait().forEach(function (d) {
+        var p = partsBruxelles(d);
         var o = document.createElement('option');
-        var memeJour = d.toDateString() === auj.toDateString();
         o.value = d.toISOString();
-        o.textContent = (memeJour ? 'Aujourd\'hui' : cap(d.toLocaleDateString('fr-BE', { weekday: 'long' }))) + ', ' + heure(d);
+        o.textContent = (jourBruxelles(d) === auj ? 'Aujourd\'hui' : cap(JOURS[p.jourSemaine])) +
+          ', ' + p.heures + 'h' + (p.minutes < 10 ? '0' + p.minutes : p.minutes);
         sel.appendChild(o);
       });
       if (!sel.options.length) {
@@ -986,16 +1086,76 @@
       if (b) b.setAttribute('aria-expanded', 'false');
     }
 
+    var CHAMPS = [
+      { id: 'o-nom', cle: 'nom', ok: function (v) { return v.trim().length >= 2; }, msg: 'Indiquez votre nom.' },
+      { id: 'o-tel', cle: 'tel', ok: function (v) { return /^\+?[0-9 ().]{9,}$/.test(v.trim()); }, msg: 'Numéro incomplet. Exemple : +32 470 00 00 00' },
+      { id: 'o-mail', cle: 'mail', ok: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); }, msg: 'Adresse e-mail invalide.' }
+    ];
+
+    function champsValides(afficher) {
+      var tout = true;
+      CHAMPS.forEach(function (c) {
+        var el = $('#' + c.id);
+        if (!el) return;
+        var err = $('[data-err-for="' + c.id + '"]');
+        var bon = c.ok(el.value);
+        if (!bon) tout = false;
+        if (afficher) {
+          el.setAttribute('aria-invalid', bon ? 'false' : 'true');
+          if (err) { err.textContent = bon ? '' : c.msg; err.hidden = bon; }
+        }
+      });
+      return tout;
+    }
+
     function valide() {
+      if (envoiEnCours) return;
+      if (!champsValides(true)) {
+        montreErreur(elErreur, 'Complétez vos coordonnées pour recevoir la confirmation.');
+        var manquant = CHAMPS.filter(function (c) { return !c.ok($('#' + c.id).value); })[0];
+        if (manquant) $('#' + manquant.id).focus();
+        return;
+      }
+
       var sel = $('#pickup-time');
-      var quand = sel && sel.selectedOptions.length ? sel.selectedOptions[0].textContent : 'à la réouverture';
-      var reference = ref('EM');
-      $('#o-ref').textContent = reference;
-      $('#o-done-text').textContent =
-        nb() + ' article' + (nb() > 1 ? 's' : '') + ', ' + prix(total()) +
-        '. Retrait ' + quand.toLowerCase() + ', rue de Flandre 68. Présentez ce numéro au comptoir, le paiement se fait sur place.';
-      elFini.hidden = false;
-      say('Commande enregistrée, numéro ' + reference);
+      if (!sel || !sel.value) {
+        montreErreur(elErreur, 'Choisissez une heure de retrait.');
+        return;
+      }
+
+      envoiEnCours = true;
+      elValider.disabled = true;
+      elValider.textContent = 'Envoi…';
+      montreErreur(elErreur, '');
+
+      var articles = Object.keys(lignes).map(function (id) {
+        return { id: id, qte: lignes[id] };
+      });
+
+      API.post('orders', {
+        articles: articles,
+        retrait: sel.value,
+        nom: $('#o-nom').value,
+        tel: $('#o-tel').value,
+        mail: $('#o-mail').value
+      }).then(function (rep) {
+        envoiEnCours = false;
+        elValider.textContent = 'Valider la commande';
+        var quand = sel.selectedOptions.length ? sel.selectedOptions[0].textContent : '';
+        $('#o-ref').textContent = rep.reference;
+        $('#o-done-text').textContent =
+          rep.pieces + ' article' + (rep.pieces > 1 ? 's' : '') + ', ' + prix(rep.totalCents) +
+          '. Retrait ' + quand.toLowerCase() + ', rue de Flandre 68. Présentez ce numéro au comptoir, le paiement se fait sur place.';
+        elFini.hidden = false;
+        say('Commande enregistrée, numéro ' + rep.reference);
+      }, function (e) {
+        envoiEnCours = false;
+        elValider.textContent = 'Valider la commande';
+        elValider.disabled = false;
+        montreErreur(elErreur, e.message);
+        /* Une heure de retrait devenue invalide se recalcule sur-le-champ. */
+        if (e.code === 'retrait_trop_tot' || e.code === 'retrait_ferme') dessineRetrait();
+      });
     }
 
     function init() {
@@ -1008,8 +1168,13 @@
       elVide = $('#cart-empty');
       elValider = $('#cart-checkout');
       elFini = $('#cart-done');
+      elErreur = $('#cart-error');
 
-      dessineMenu();
+      CHAMPS.forEach(function (c) {
+        var el = $('#' + c.id);
+        if (el) el.addEventListener('blur', function () { champsValides(true); });
+      });
+
       dessine();
 
       $('#cart-open').addEventListener('click', function () {
@@ -1031,6 +1196,7 @@
 
     return {
       init: init,
+      dessineMenu: dessineMenu,
       fermeTiroir: fermeTiroir,
       tiroirOuvert: function () { return !!elTiroir && elTiroir.classList.contains('is-open'); }
     };
@@ -1039,16 +1205,34 @@
   /* ===================================================================
      10. Démarrage
      =================================================================== */
+  function carteIndisponible() {
+    var message = 'La carte est momentanément indisponible. Rechargez la page dans un instant.';
+    [$('#carte-liste'), $('#order-list')].forEach(function (hote) {
+      if (!hote) return;
+      hote.textContent = '';
+      var p = document.createElement('p');
+      p.className = 'slots__wait';
+      p.textContent = message;
+      hote.appendChild(p);
+    });
+    say(message);
+  }
+
   function demarre() {
     gardeMedias();
     preloader();
     entete();
     heroVideo();
     voyage();
-    carteEditoriale();
     reservation.init();
     panier.init();
     feuilles();
+
+    /* Les deux affichages de la carte attendent la même réponse. */
+    chargeCarte().then(function () {
+      carteEditoriale();
+      panier.dessineMenu();
+    }, carteIndisponible);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', demarre);

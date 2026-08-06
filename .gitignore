@@ -2,3 +2,12 @@ __pycache__/
 *.pyc
 .DS_Store
 node_modules/
+
+# Contient les clés Cosmos et Brevo : ne doit jamais partir sur GitHub.
+api/local.settings.json
+
+.azure/
+bin/
+obj/
+*.log
+Thumbs.db
