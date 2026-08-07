@@ -441,6 +441,109 @@
   }
 
   /* ===================================================================
+     5 ter. Typographie cinétique du hero
+
+     Le titre réagit à l'approche du curseur : chaque lettre proche s'étire
+     très légèrement vers le haut, puis se repose. Un souffle, pas un effet.
+     Uniquement au pointeur fin — jamais au tactile, jamais en mouvement
+     réduit — et le titre reste un bloc de texte ordinaire pour le reste du
+     monde : l'intitulé complet est posé en aria-label avant le découpage.
+
+     Réglages à ajuster après premier retour visuel : constante KIN.
+     =================================================================== */
+  var KIN = {
+    rayon: 110,       /* portée de l'influence du curseur, en pixels */
+    levee: 8,         /* montée maximale d'une lettre, en pixels */
+    etirement: 0.07,  /* allongement vertical maximal (0.07 = 7 %) */
+    lissage: 0.16     /* amortissement du retour (0 à 1 par image) */
+  };
+
+  function typoCinetique() {
+    if (reduce) return;
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+    if (!('requestAnimationFrame' in window)) return;
+
+    var hero = $('.hero');
+    var titre = hero && hero.querySelector('h1.display');
+    if (!titre) return;
+
+    /* L'intitulé lisible d'abord, le découpage ensuite. Les <br> deviennent
+       des espaces dans le libellé. */
+    var brut = [];
+    (function collecte(n) {
+      Array.prototype.forEach.call(n.childNodes, function (e) {
+        if (e.nodeType === 3) brut.push(e.textContent);
+        else if (e.nodeName === 'BR') brut.push(' ');
+        else collecte(e);
+      });
+    })(titre);
+    titre.setAttribute('aria-label', brut.join('').replace(/\s+/g, ' ').trim());
+
+    var lettres = [];
+    (function decoupe(n) {
+      Array.prototype.slice.call(n.childNodes).forEach(function (e) {
+        if (e.nodeType === 3) {
+          var frag = document.createDocumentFragment();
+          e.textContent.split('').forEach(function (ch) {
+            if (/\s/.test(ch)) { frag.appendChild(document.createTextNode(ch)); return; }
+            var s = document.createElement('span');
+            s.className = 'kin';
+            s.textContent = ch;
+            frag.appendChild(s);
+            lettres.push({ el: s, val: 0, cible: 0 });
+          });
+          n.replaceChild(frag, e);
+        } else if (e.nodeName !== 'BR') {
+          decoupe(e);
+        }
+      });
+    })(titre);
+    if (!lettres.length) return;
+
+    var sx = 0, sy = 0, dedans = false, enBoucle = false;
+
+    function pas() {
+      var actifs = 0;
+      lettres.forEach(function (l) {
+        if (dedans) {
+          var r = l.el.getBoundingClientRect();
+          var dx = r.left + r.width / 2 - sx;
+          var dy = r.top + r.height / 2 - sy;
+          var d2 = dx * dx + dy * dy;
+          l.cible = Math.exp(-d2 / (2 * KIN.rayon * KIN.rayon));
+        } else {
+          l.cible = 0;
+        }
+        l.val += (l.cible - l.val) * KIN.lissage;
+        if (l.val < 0.004) {
+          if (l.el.style.transform) l.el.style.transform = '';
+          return;
+        }
+        actifs++;
+        l.el.style.transform = 'translateY(' + (-KIN.levee * l.val).toFixed(2) + 'px)' +
+          ' scaleY(' + (1 + KIN.etirement * l.val).toFixed(4) + ')';
+      });
+      if (!dedans && !actifs) { enBoucle = false; return; }
+      requestAnimationFrame(pas);
+    }
+
+    function reveille() {
+      if (!enBoucle) { enBoucle = true; requestAnimationFrame(pas); }
+    }
+
+    hero.addEventListener('pointermove', function (e) {
+      if (e.pointerType && e.pointerType !== 'mouse') return;
+      sx = e.clientX; sy = e.clientY;
+      dedans = true;
+      reveille();
+    });
+    hero.addEventListener('pointerleave', function () {
+      dedans = false;
+      reveille();
+    });
+  }
+
+  /* ===================================================================
      5 bis. Accès à l'API
      =================================================================== */
   var PANNE = 'Le service est momentanément indisponible. Réessayez dans un instant.';
@@ -1898,6 +2001,7 @@
     entete();
     heroVideo();
     voyage();
+    typoCinetique();
     reservation.init();
     panier.init();
     bonCadeau.init();
