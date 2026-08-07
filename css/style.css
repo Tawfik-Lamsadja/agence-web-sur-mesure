@@ -983,6 +983,33 @@ p { max-width: var(--w-text); }
 .step--done { text-align: center; padding-top: var(--s-5); }
 .step--done .enso--seal { width: 84px; margin: 0 auto var(--s-4); color: var(--c-shu); }
 .step--done .display { margin-bottom: var(--s-3); }
+
+/* Compteur de fidélité : dix marques, celles acquises encrées en vermillon.
+   L'état est peint tel quel, sans transition — le chiffre ne défile pas. */
+.loyalty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  margin: var(--s-4) auto 0;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--c-line);
+  max-width: 34ch;
+}
+.loyalty__marks { display: flex; gap: 6px; }
+.loyalty__mark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--c-line-strong);
+}
+.loyalty__mark.is-on { background: var(--c-shu); border-color: var(--c-shu); }
+.loyalty__text {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--c-mauve);
+}
 .done__ref { font-size: 0.9rem; color: var(--c-bone-dim); margin: 0 auto var(--s-2); }
 .done__ref strong { color: var(--c-bone); letter-spacing: 0.14em; font-weight: 500; }
 .done__text { color: var(--c-bone-dim); margin: 0 auto var(--s-5); font-size: 0.92rem; }

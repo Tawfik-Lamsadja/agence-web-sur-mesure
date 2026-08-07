@@ -241,6 +241,42 @@
     if (message) say(message);
   }
 
+  /* Compteur de fidélité posé sur l'écran de confirmation. L'état est dessiné
+     tel quel, sans compte à rebours ni chiffre qui défile : la valeur affichée
+     est celle que le serveur vient de renvoyer.
+
+     Une fidélité absente — compteur indisponible côté serveur — n'affiche
+     rien, plutôt qu'un chiffre faux. */
+  function dessineFidelite(id, fid) {
+    var el = $('#' + id);
+    if (!el) return;
+    if (!fid || typeof fid.visites !== 'number') { el.hidden = true; return; }
+
+    el.textContent = '';
+    el.hidden = false;
+
+    var marques = document.createElement('span');
+    marques.className = 'loyalty__marks';
+    marques.setAttribute('aria-hidden', 'true');
+    /* Au palier exact, le cycle est plein : les dix marques sont encrées. */
+    var pleines = fid.recompenseAtteinte ? fid.palier : fid.dansCycle;
+    for (var i = 0; i < fid.palier; i++) {
+      var m = document.createElement('i');
+      m.className = 'loyalty__mark' + (i < pleines ? ' is-on' : '');
+      marques.appendChild(m);
+    }
+
+    var texte = document.createElement('span');
+    texte.className = 'loyalty__text';
+    texte.textContent = fid.recompenseAtteinte
+      ? 'Votre ' + fid.visites + 'ᵉ visite. ' + fid.recompense + ' à votre prochaine venue.'
+      : fid.visites + (fid.visites > 1 ? ' visites' : ' visite') +
+        ' · encore ' + fid.restantes + ' avant ' + fid.recompense.toLowerCase() + '.';
+
+    el.appendChild(marques);
+    el.appendChild(texte);
+  }
+
   /* ===================================================================
      6. La carte
      =================================================================== */
@@ -802,6 +838,7 @@
           ', ' + rep.tableNom.toLowerCase() + ', pour ' + rep.convives + (rep.convives > 1 ? ' personnes' : ' personne') +
           '.' + (rep.emailEnvoye ? ' La confirmation part à l\'instant vers ' + etat.mail + '.' : '') +
           ' Pour annuler, appelez le +32 2 512 04 77 au plus tard vingt-quatre heures avant.';
+        dessineFidelite('r-fid', rep.fidelite);
         montre(TOTAL_ETAPES);
         say('Réservation confirmée, référence ' + rep.reference);
       }, function (e) {
@@ -1153,6 +1190,7 @@
         $('#o-done-text').textContent =
           rep.pieces + ' article' + (rep.pieces > 1 ? 's' : '') + ', ' + prix(rep.totalCents) +
           '. Retrait ' + quand.toLowerCase() + ', rue de Flandre 68. Présentez ce numéro au comptoir, le paiement se fait sur place.';
+        dessineFidelite('o-fid', rep.fidelite);
         elFini.hidden = false;
         say('Commande enregistrée, numéro ' + rep.reference);
       }, function (e) {
