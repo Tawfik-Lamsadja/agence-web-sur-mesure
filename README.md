@@ -12,10 +12,12 @@ démonstration et qu'aucun repas n'attend son destinataire.
 
 ## Ce que la démo montre
 
-- **Le voyage du sushi** : narration en six chapitres pilotée au défilement, une
-  seule pièce suivie du geste du chef jusqu'à la bouche. Trois chapitres sur
-  vidéo muette en boucle, trois sur image fixe. Les vidéos ne se lancent que
-  lorsqu'elles sont à l'écran et se mettent en pause dès qu'elles en sortent.
+- **Le voyage du sushi** : narration en huit chapitres pilotée au défilement,
+  une seule pièce suivie de la mer du Nord jusqu'à la bouche. Cinq chapitres
+  animés en séquences d'images WebP dessinées sur canvas — la frame suit la
+  position de défilement, sans décodage vidéo en temps réel —, trois chapitres
+  sur image fixe en fondu. En repli (vieux navigateur), les vidéos muettes en
+  boucle reprennent le relais et ne jouent que lorsqu'elles sont à l'écran.
 - **Réservation de table** : calendrier, créneaux, convives, choix de la place
   sur un plan de salle, coordonnées, acompte anti no-show de 10 € par personne
   déduit de l'addition. Six étapes, une confirmation avec référence. Les
@@ -114,8 +116,8 @@ Karla). L'API est en Node.js et n'a que deux dépendances, `@azure/functions` et
 - Toutes les couleurs sont des variables CSS déclarées en tête de feuille.
 - Un média absent est masqué par le script : l'emplacement conserve son aplat
   sombre, sans icône cassée ni texte de remplacement.
-- `prefers-reduced-motion` bascule le voyage en six chapitres empilés, sur
-  images fixes, sans défilement piloté ni lecture vidéo.
+- `prefers-reduced-motion` bascule le voyage en huit chapitres empilés, sur
+  images fixes, sans défilement piloté, sans séquence canvas ni lecture vidéo.
 - Cibles tactiles à 44 px minimum, focus visible, piège de focus dans les
   panneaux, fermeture au clavier, libellés annoncés aux lecteurs d'écran.
 - Testé de 375 à 1440 px, sans débordement horizontal.

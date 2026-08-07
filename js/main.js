@@ -135,7 +135,43 @@
 
   /* ===================================================================
      5. Le voyage du sushi
+
+     Deux modes.
+
+     — Mode cinéma (navigateurs modernes, mouvement autorisé) : les chapitres
+       animés sont des séquences d'images WebP dessinées sur un <canvas>, la
+       frame étant calculée depuis la position de défilement. Aucun décodage
+       vidéo en temps réel : la technique des pages produit d'Apple. Les
+       chapitres fixes s'enchaînent en fondu.
+
+     — Mode classique (repli) : l'ancien système IntersectionObserver et
+       vidéos en boucle, conservé tel quel. Il sert aussi de socle quand les
+       séquences ne sont pas encore chargées : l'affiche du chapitre reste
+       visible sous le canvas.
+
+     Réglages à ajuster après premier retour visuel : tout est dans CINE.
      =================================================================== */
+  var CINE = {
+    /* Hauteur de défilement d'un chapitre animé, en écrans : plus c'est
+       grand, plus la séquence se déroule lentement sous le doigt. */
+    ecransParChapAnime: 2.2,
+    /* Hauteur d'un chapitre fixe : le temps d'un fondu et d'une lecture. */
+    ecransParChapFixe: 1.2,
+    /* Lissage exponentiel de la frame affichée (0 à 1 par image rendue).
+       Plus haut = plus réactif, plus bas = plus feutré. */
+    lissage: 0.22,
+    /* Démarrage du préchargement : distance de la section, en hauteurs
+       d'écran, à laquelle les séquences commencent à se charger. */
+    margePrechargement: '150% 0px',
+    /* Passe grossière : une frame sur N chargée d'abord, pour que le
+       défilement réponde vite ; le reste suit. */
+    pasGrossier: 6,
+    /* Chargements d'images simultanés. */
+    parallelisme: 6,
+    /* Netteté du canvas : plafond de devicePixelRatio. */
+    dprMax: 1.5
+  };
+
   function voyage() {
     var sec = $('[data-voyage]');
     if (!sec) return;
@@ -143,17 +179,11 @@
     var chaps = $$('.chap', sec);
     var dots  = $$('.voyage__dots button', sec);
     var steps = $$('.voyage__steps > div', sec);
+    var stage = $('.voyage__stage', sec);
     var actif = 0;
     var visible = false;
 
-    function applique(i) {
-      actif = i;
-      chaps.forEach(function (c, idx) {
-        c.classList.toggle('is-active', idx === i);
-        var v = c.querySelector('video');
-        if (!v) return;
-        (idx === i && visible) ? joue(v) : pause(v);
-      });
+    function appliqueDots(i) {
       dots.forEach(function (d, idx) {
         if (idx === i) d.setAttribute('aria-current', 'true');
         else d.removeAttribute('aria-current');
@@ -174,32 +204,240 @@
     });
 
     if (reduce) {
-      /* Les six chapitres sont empilés par la feuille de style : rien à piloter. */
+      /* Les chapitres sont empilés par la feuille de style : rien à piloter. */
       chaps.forEach(function (c) { c.classList.add('is-active'); });
       return;
     }
-    if (!('IntersectionObserver' in window)) { applique(0); return; }
 
-    /* La scène joue seulement quand elle occupe l'écran. */
-    new IntersectionObserver(function (entrees) {
-      entrees.forEach(function (e) {
-        visible = e.isIntersecting;
-        if (!visible) chaps.forEach(function (c) { pause(c.querySelector('video')); });
-        else applique(actif);
+    var supporteCinema = 'IntersectionObserver' in window &&
+      'requestAnimationFrame' in window &&
+      (function () {
+        var c = document.createElement('canvas');
+        return !!(c.getContext && c.getContext('2d'));
+      })();
+
+    if (supporteCinema) { cinema(); return; }
+    classique();
+
+    /* ---------- mode classique : IO et vidéos en boucle ---------- */
+    function classique() {
+      function applique(i) {
+        actif = i;
+        chaps.forEach(function (c, idx) {
+          c.classList.toggle('is-active', idx === i);
+          var v = c.querySelector('video');
+          if (!v) return;
+          (idx === i && visible) ? joue(v) : pause(v);
+        });
+        appliqueDots(i);
+      }
+
+      if (!('IntersectionObserver' in window)) { applique(0); return; }
+
+      /* La scène joue seulement quand elle occupe l'écran. */
+      new IntersectionObserver(function (entrees) {
+        entrees.forEach(function (e) {
+          visible = e.isIntersecting;
+          if (!visible) chaps.forEach(function (c) { pause(c.querySelector('video')); });
+          else applique(actif);
+        });
+      }, { threshold: 0.2 }).observe(stage);
+
+      /* Le chapitre qui croise le milieu de l'écran prend le relais. */
+      var io = new IntersectionObserver(function (entrees) {
+        entrees.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          var i = parseInt(e.target.getAttribute('data-step'), 10);
+          if (i !== actif) applique(i);
+        });
+      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
+      steps.forEach(function (s) { io.observe(s); });
+
+      applique(0);
+    }
+
+    /* ---------- mode cinéma : séquences scrutées au défilement ---------- */
+    function cinema() {
+      var pistes = chaps.map(function (chap, i) {
+        var seq = chap.getAttribute('data-seq');
+        if (!seq) return { chap: chap, anime: false };
+
+        var n = parseInt(chap.getAttribute('data-seq-n'), 10) || 0;
+        var canvas = document.createElement('canvas');
+        canvas.className = 'chap__seq';
+        canvas.setAttribute('aria-hidden', 'true');
+        chap.querySelector('.chap__media').appendChild(canvas);
+
+        return {
+          chap: chap, anime: true, seq: seq, n: n,
+          canvas: canvas, ctx: canvas.getContext('2d'),
+          images: new Array(n), chargees: 0, prete: false,
+          cible: 0, courante: 0, dessinee: -1
+        };
       });
-    }, { threshold: 0.2 }).observe($('.voyage__stage', sec));
 
-    /* Le chapitre qui croise le milieu de l'écran prend le relais. */
-    var io = new IntersectionObserver(function (entrees) {
-      entrees.forEach(function (e) {
-        if (!e.isIntersecting) return;
-        var i = parseInt(e.target.getAttribute('data-step'), 10);
-        if (i !== actif) applique(i);
+      /* Chaque step reçoit sa hauteur : longue pour un chapitre animé,
+         courte pour un chapitre fixe. */
+      steps.forEach(function (s, i) {
+        var scrub = s.hasAttribute('data-scrub');
+        s.style.height = (scrub ? CINE.ecransParChapAnime : CINE.ecransParChapFixe) * 100 + 'svh';
       });
-    }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
-    steps.forEach(function (s) { io.observe(s); });
 
-    applique(0);
+      /* ----- chargement progressif des séquences ----- */
+      var chargementLance = false;
+
+      function srcFrame(piste, i) {
+        var num = String(i + 1);
+        while (num.length < 3) num = '0' + num;
+        return 'assets/seq/' + piste.seq + '/f' + num + '.webp';
+      }
+
+      function chargeTout() {
+        if (chargementLance) return;
+        chargementLance = true;
+
+        /* File de chargement : d'abord la passe grossière de chaque séquence
+           dans l'ordre du récit, puis les frames restantes. */
+        var file = [];
+        var animees = pistes.filter(function (p) { return p.anime; });
+        animees.forEach(function (p) {
+          for (var i = 0; i < p.n; i += CINE.pasGrossier) file.push([p, i]);
+        });
+        animees.forEach(function (p) {
+          for (var i = 0; i < p.n; i++) {
+            if (i % CINE.pasGrossier !== 0) file.push([p, i]);
+          }
+        });
+
+        var enCours = 0;
+        function suivant() {
+          while (enCours < CINE.parallelisme && file.length) {
+            var tache = file.shift();
+            charge(tache[0], tache[1]);
+          }
+        }
+        function charge(piste, i) {
+          enCours++;
+          var img = new Image();
+          img.decoding = 'async';
+          img.onload = function () {
+            piste.images[i] = img;
+            piste.chargees++;
+            /* La passe grossière suffit pour montrer le canvas : les trous
+               sont comblés par la frame chargée la plus proche. */
+            if (!piste.prete && piste.chargees >= Math.ceil(piste.n / CINE.pasGrossier)) {
+              piste.prete = true;
+              piste.dessinee = -1;
+              piste.chap.classList.add('a-seq');
+            }
+            enCours--;
+            suivant();
+          };
+          img.onerror = function () {
+            /* Frame absente : la piste continue sans elle ; si rien ne
+               charge, le canvas ne s'affiche jamais et l'affiche reste. */
+            enCours--;
+            suivant();
+          };
+          img.src = srcFrame(piste, i);
+        }
+        suivant();
+      }
+
+      new IntersectionObserver(function (entrees, io) {
+        entrees.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          io.disconnect();
+          chargeTout();
+        });
+      }, { rootMargin: CINE.margePrechargement }).observe(sec);
+
+      /* ----- dimensionnement des canvas ----- */
+      function taille() {
+        var dpr = Math.min(window.devicePixelRatio || 1, CINE.dprMax);
+        var w = stage.clientWidth, h = stage.clientHeight;
+        pistes.forEach(function (p) {
+          if (!p.anime) return;
+          p.canvas.width = Math.round(w * dpr);
+          p.canvas.height = Math.round(h * dpr);
+          p.dessinee = -1; /* force un redessin à la prochaine image */
+        });
+      }
+      taille();
+      window.addEventListener('resize', taille);
+
+      /* ----- dessin d'une frame, cadrage cover ----- */
+      function dessine(piste, index) {
+        var img = piste.images[index];
+        if (!img) {
+          /* Frame pas encore là : la plus proche déjà chargée fait l'affaire. */
+          for (var d = 1; d < piste.n; d++) {
+            if (piste.images[index - d]) { img = piste.images[index - d]; break; }
+            if (piste.images[index + d]) { img = piste.images[index + d]; break; }
+          }
+        }
+        if (!img) return;
+
+        var cw = piste.canvas.width, ch = piste.canvas.height;
+        var k = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+        var dw = img.naturalWidth * k, dh = img.naturalHeight * k;
+        piste.ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+        piste.dessinee = index;
+      }
+
+      /* ----- boucle : position de défilement vers chapitre et frame ----- */
+      var enBoucle = false;
+
+      function boucle() {
+        if (!enBoucle) return;
+
+        var vh = window.innerHeight;
+        var ligne = vh / 2; /* le chapitre actif est celui qui croise le milieu */
+        var courant = 0;
+
+        for (var i = 0; i < steps.length; i++) {
+          var r = steps[i].getBoundingClientRect();
+          if (r.top <= ligne) courant = i;
+
+          var piste = pistes[i];
+          if (piste && piste.anime && piste.prete) {
+            /* Progression locale : de l'entrée du step sur la ligne médiane
+               jusqu'à sa sortie. La frame suit linéairement, puis un lissage
+               exponentiel amortit chaque pas. */
+            var p = (ligne - r.top) / r.height;
+            p = Math.min(1, Math.max(0, p));
+            piste.cible = p * (piste.n - 1);
+            piste.courante += (piste.cible - piste.courante) * CINE.lissage;
+            var index = Math.round(piste.courante);
+            if (index !== piste.dessinee) dessine(piste, index);
+          }
+        }
+
+        if (courant !== actif) {
+          actif = courant;
+          chaps.forEach(function (c, idx) { c.classList.toggle('is-active', idx === actif); });
+          appliqueDots(actif);
+        }
+
+        requestAnimationFrame(boucle);
+      }
+
+      /* La boucle ne tourne que quand la scène est à l'écran. */
+      new IntersectionObserver(function (entrees) {
+        entrees.forEach(function (e) {
+          visible = e.isIntersecting;
+          if (visible && !enBoucle) {
+            enBoucle = true;
+            requestAnimationFrame(boucle);
+          } else if (!visible) {
+            enBoucle = false;
+          }
+        });
+      }, { threshold: 0 }).observe(sec);
+
+      chaps[0].classList.add('is-active');
+      appliqueDots(0);
+    }
   }
 
   /* ===================================================================

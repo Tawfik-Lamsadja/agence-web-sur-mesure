@@ -424,6 +424,19 @@ p { max-width: var(--w-text); }
 }
 .chap__media .media__el { transform: scale(1.06); transition: transform 9s linear; }
 .chap.is-active .chap__media .media__el { transform: scale(1); }
+
+/* Séquence d'images dessinée sur canvas, posée au-dessus de l'affiche.
+   Invisible tant que la passe grossière n'est pas chargée : l'affiche du
+   chapitre assure l'intérim, puis le canvas fond dessus. */
+.chap__seq {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity var(--t-slow) var(--e-soft);
+}
+.chap.a-seq .chap__seq { opacity: 1; }
 .chap::after {
   content: "";
   position: absolute; inset: 0;
@@ -1558,6 +1571,9 @@ p { max-width: var(--w-text); }
   }
   .chap__media { position: relative; inset: auto; min-height: 46svh; }
   .chap__media .media__el { transform: none; }
+  /* Jamais de séquence scrutée en mouvement réduit : le script ne la crée
+     pas, et cette règle garantit qu'un canvas résiduel resterait invisible. */
+  .chap__seq { display: none; }
   .chap__body {
     position: relative;
     left: auto; right: auto; bottom: auto;

@@ -11,6 +11,15 @@ aucun visage net, aucun logo ni texte incrusté.
 
 | Fichier | Type | Format | Emplacement |
 |---|---|---|---|
+| `voyage-0a-nage.mp4` | vidéo, 5 s | 1280×720, 16/9 | Voyage, chapitre 01 (repli) |
+| `voyage-0a-nage.jpg` | image | 1280×720, 16/9 | Affiche du chapitre 01, image fixe en mouvement réduit |
+| `voyage-0b-capture.mp4` | vidéo, 5 s | 1280×720, 16/9 | Voyage, chapitre 02 (repli) |
+| `voyage-0b-capture.jpg` | image | 1280×720, 16/9 | Affiche du chapitre 02, image fixe en mouvement réduit |
+| `seq/0a/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 01, scrutée au défilement |
+| `seq/0b/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 02, scrutée au défilement |
+| `seq/01/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 03, scrutée au défilement |
+| `seq/03/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 05, scrutée au défilement |
+| `seq/05/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 07, scrutée au défilement |
 | `hero.mp4` | vidéo, 8 à 12 s en boucle | 1920×1080, 16/9 | Fond du hero |
 | `hero-poster.jpg` | image | 1920×1080, 16/9 | Affiche du hero, visible avant lecture |
 | `maison-salle.jpg` | image | 1200×1600, 3/4 | Section « La maison » |
@@ -30,9 +39,21 @@ aucun visage net, aucun logo ni texte incrusté.
 
 Vidéos : H.264/MP4, sans piste audio, bitrate raisonnable (moins de 4 Mo par
 fichier). Elles sont lues muettes, en boucle, et seulement quand elles sont à
-l'écran. Les trois `.jpg` du voyage qui accompagnent une vidéo servent d'affiche
+l'écran. Les cinq `.jpg` du voyage qui accompagnent une vidéo servent d'affiche
 et remplacent totalement la vidéo si l'utilisateur a activé la réduction des
 animations.
+
+Séquences d'images (`assets/seq/`) : extraites des vidéos du voyage, 72 frames
+WebP par segment, dessinées sur canvas et pilotées par la position de
+défilement. Régénération depuis une vidéo source :
+
+```
+ffmpeg -i assets/voyage-XX.mp4 -vf "fps=72/DUREE,scale=1280:-2" -frames:v 72 \
+       -c:v libwebp -q:v 62 -compression_level 6 assets/seq/XX/f%03d.webp
+```
+
+Les deux assets du chapitre 01 et 02 (`voyage-0a-nage`, `voyage-0b-capture`)
+ont été générés avec Seedance 2.0 (Higgsfield), 720p, 5 s, prompts ci-dessous.
 
 ---
 
@@ -49,6 +70,14 @@ animations.
 **Prompt :** "Cinematic still of an intimate Japanese sushi counter at night, eight empty hinoki wood seats, one low warm lamp above a dark lacquered bar, deep plum and aubergine shadows, a single vermillion glow from a distant paper lantern, thin drifting steam catching the light, shallow depth of field, anamorphic lens, 35mm film grain, no people, no faces, no text, no logo, muted palette of dark violet, near black and bone white, editorial restaurant photography"
 
 ### Le voyage du sushi
+
+**Fichier :** `voyage-0a-nage.mp4`
+**Type :** vidéo, 5 s, boucle
+**Prompt :** "Cinematic underwater shot of a single silver-scaled fish swimming slowly through deep dark water, near-black aubergine and dark plum toned water with absolutely no blue tint, faint shafts of pale warm light falling from above, tiny particles drifting in the beam, the fish's flank catching one soft bone-white highlight and a faint warm vermillion glint, slow steady gliding motion from right to left, shallow depth of field, 35mm film grain, no people, no faces, no text, no logo, muted palette of dark violet, near black and bone white, seamless loop"
+
+**Fichier :** `voyage-0b-capture.mp4`
+**Type :** vidéo, 5 s, boucle
+**Prompt :** "Close-up of a weathered fisherman's hands hauling a wet rope net up from dark water at night, water droplets and fine spray catching a single low warm lamp, one silver fish gleaming caught in the mesh, deep plum and near-black shadows swallowing the frame, one small vermillion boat lamp glowing far in the background, cinematic slow motion, shallow depth of field, 35mm film grain, hands and forearms only, no face visible, no text, no logo, muted palette of dark violet, near black and bone white, seamless loop"
 
 **Fichier :** `voyage-01-preparation.mp4`
 **Type :** vidéo, 5 à 8 s, boucle
