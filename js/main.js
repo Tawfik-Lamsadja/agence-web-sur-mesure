@@ -312,7 +312,12 @@
   /* ===================================================================
      7. Feuilles : ouverture, fermeture, navigation par ancre
      =================================================================== */
-  var FEUILLES = { reserver: '#sheet-reserver', commander: '#sheet-commander' };
+  var FEUILLES = {
+    reserver: '#sheet-reserver',
+    commander: '#sheet-commander',
+    cadeau: '#sheet-cadeau',
+    privatiser: '#sheet-privatiser'
+  };
   var ouverte = null;
   var dernierFocus = null;
   var empilees = 0;
@@ -349,6 +354,8 @@
     var cible = focusables($('.sheet__panel', el))[0];
     if (cible) setTimeout(function () { cible.focus(); }, 60);
     if (nom === 'reserver') reservation.reinitSiTermine();
+    if (nom === 'cadeau') bonCadeau.reinitSiTermine();
+    if (nom === 'privatiser') privatiser.reinitSiTermine();
   }
 
   function ferme(silencieux) {
@@ -1218,6 +1225,342 @@
     say(message);
   }
 
+  /* ===================================================================
+     11. Bon cadeau et privatisation
+
+     Deux formulaires d'une seule étape, bâtis sur le même squelette : une
+     validation locale qui n'ouvre le bouton que quand tout est bon, puis un
+     envoi dont les erreurs de champs renvoyées par l'API sont reposées sur
+     les champs concernés.
+     =================================================================== */
+  var COORD = [
+    { suffixe: 'nom', cle: 'nom', ok: function (v) { return v.trim().length >= 2; }, msg: 'Indiquez votre nom.' },
+    { suffixe: 'tel', cle: 'tel', ok: function (v) { return /^\+?[0-9 ().-]{9,20}$/.test(v.trim()); }, msg: 'Numéro incomplet. Exemple : +32 470 00 00 00' },
+    { suffixe: 'mail', cle: 'mail', ok: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); }, msg: 'Adresse e-mail invalide.' }
+  ];
+
+  function marqueChamp(id, message) {
+    var el = $('#' + id);
+    var err = $('[data-err-for="' + id + '"]');
+    if (el) el.setAttribute('aria-invalid', message ? 'true' : 'false');
+    if (err) { err.textContent = message || ''; err.hidden = !message; }
+  }
+
+  /* Les erreurs que l'API renvoie par champ priment sur la validation locale :
+     c'est elle qui fait autorité. */
+  function reposeErreurs(prefixe, champs) {
+    if (!champs) return;
+    COORD.forEach(function (c) {
+      if (champs[c.cle]) marqueChamp(prefixe + '-' + c.suffixe, champs[c.cle]);
+    });
+  }
+
+  function coordValides(prefixe, afficher) {
+    var tout = true;
+    COORD.forEach(function (c) {
+      var el = $('#' + prefixe + '-' + c.suffixe);
+      if (!el) return;
+      var bon = c.ok(el.value);
+      if (!bon) tout = false;
+      if (afficher) marqueChamp(prefixe + '-' + c.suffixe, bon ? '' : c.msg);
+    });
+    return tout;
+  }
+
+  function litCoord(prefixe) {
+    var note = $('#' + prefixe + '-note');
+    return {
+      nom: $('#' + prefixe + '-nom').value.trim(),
+      tel: $('#' + prefixe + '-tel').value.trim(),
+      mail: $('#' + prefixe + '-mail').value.trim(),
+      note: note ? note.value.trim() : ''
+    };
+  }
+
+  /* Remet la feuille sur son formulaire. Sans cela, rouvrir une feuille déjà
+     envoyée réafficherait la confirmation, pied de page caché. */
+  function reinitFeuille(feuille) {
+    if (!feuille) return false;
+    var etapes = $$('.step', feuille);
+    if (!etapes.length || !etapes[1] || etapes[1].hidden) return false;
+    etapes.forEach(function (s, i) {
+      s.hidden = i !== 0;
+      s.classList.toggle('is-active', i === 0);
+    });
+    var pied = $('.sheet__foot', feuille);
+    if (pied) pied.hidden = false;
+    $$('input, textarea', feuille).forEach(function (el) { el.value = ''; });
+    $$('[data-err-for]', feuille).forEach(function (e) { e.textContent = ''; e.hidden = true; });
+    $$('[aria-invalid]', feuille).forEach(function (e) { e.setAttribute('aria-invalid', 'false'); });
+    $$('.chip', feuille).forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+    return true;
+  }
+
+  /* Bascule la feuille sur son écran de confirmation. */
+  function montreFin(feuille) {
+    $$('.step', feuille).forEach(function (s, i) {
+      s.hidden = i !== 1;
+      s.classList.toggle('is-active', i === 1);
+    });
+    var pied = $('.sheet__foot', feuille);
+    if (pied) pied.hidden = true;
+    var titre = $('.step--done .display', feuille);
+    if (titre) { titre.setAttribute('tabindex', '-1'); titre.focus(); }
+  }
+
+  function cadeau() {
+    var MONTANTS = [2500, 5000, 10000];
+    var choisi = null;
+    var envoiEnCours = false;
+    var elEnvoi, elErreur, elResume;
+
+    function montantCourant() {
+      if (choisi !== null) return choisi;
+      var libre = $('#g-libre').value.trim();
+      if (libre === '') return null;
+      var euros = Number(libre);
+      if (!isFinite(euros) || Math.floor(euros) !== euros) return null;
+      var cents = euros * 100;
+      if (cents < 1000 || cents > 50000) return null;
+      return cents;
+    }
+
+    function valide() {
+      var cents = montantCourant();
+      var bon = cents !== null && coordValides('g', false);
+      elEnvoi.disabled = envoiEnCours || !bon;
+      elResume.textContent = cents === null ? '' : 'Bon de ' + prix(cents);
+      return bon;
+    }
+
+    function envoie() {
+      if (envoiEnCours) return;
+      if (!coordValides('g', true)) {
+        montreErreur(elErreur, 'Complétez vos coordonnées pour recevoir le bon.');
+        return;
+      }
+      var cents = montantCourant();
+      if (cents === null) {
+        marqueChamp('g-libre', 'Montant entre 10 et 500 €, par euro entier.');
+        montreErreur(elErreur, 'Choisissez un montant.');
+        return;
+      }
+
+      envoiEnCours = true;
+      elEnvoi.disabled = true;
+      elEnvoi.textContent = 'Envoi…';
+      montreErreur(elErreur, '');
+
+      var coord = litCoord('g');
+      API.post('bons', {
+        montantCents: cents,
+        nom: coord.nom, tel: coord.tel, mail: coord.mail, note: coord.note
+      }).then(function (rep) {
+        envoiEnCours = false;
+        $('#g-ref').textContent = rep.code;
+        $('#g-done-text').textContent =
+          'Un bon de ' + prix(rep.montantCents) + ', utilisable en une fois.' +
+          (rep.emailEnvoye ? ' Il part à l\'instant vers ' + coord.mail + '.' : '') +
+          ' Annoncez simplement ce code au comptoir.';
+        montreFin($('#sheet-cadeau'));
+        say('Bon cadeau émis, code ' + rep.code);
+      }, function (e) {
+        envoiEnCours = false;
+        elEnvoi.textContent = 'Recevoir le bon';
+        elEnvoi.disabled = false;
+        reposeErreurs('g', e.champs);
+        if (e.code === 'montant_invalide') marqueChamp('g-libre', e.message);
+        montreErreur(elErreur, e.message);
+      });
+    }
+
+    return {
+      init: function () {
+        var feuille = $('#sheet-cadeau');
+        if (!feuille) return;
+
+        elEnvoi = $('#g-send');
+        elErreur = $('#g-error');
+        elResume = $('#g-summary');
+
+        $$('#g-montants .chip').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var v = parseInt(b.getAttribute('data-montant'), 10);
+            /* Un second clic sur le même bouton le désélectionne. */
+            choisi = (choisi === v) ? null : v;
+            $$('#g-montants .chip').forEach(function (o) {
+              o.setAttribute('aria-pressed', String(parseInt(o.getAttribute('data-montant'), 10) === choisi));
+            });
+            /* Les deux saisies s'excluent : un bouton vide le champ libre. */
+            if (choisi !== null) { $('#g-libre').value = ''; marqueChamp('g-libre', ''); }
+            montreErreur(elErreur, '');
+            valide();
+          });
+        });
+
+        $('#g-libre').addEventListener('input', function () {
+          if (this.value.trim() !== '' && choisi !== null) {
+            choisi = null;
+            $$('#g-montants .chip').forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+          }
+          marqueChamp('g-libre', '');
+          montreErreur(elErreur, '');
+          valide();
+        });
+
+        COORD.forEach(function (c) {
+          var el = $('#g-' + c.suffixe);
+          el.addEventListener('input', valide);
+          el.addEventListener('blur', function () { coordValides('g', true); });
+        });
+
+        elEnvoi.addEventListener('click', envoie);
+        valide();
+      },
+      reinitSiTermine: function () {
+        if (!reinitFeuille($('#sheet-cadeau'))) return;
+        choisi = null;
+        envoiEnCours = false;
+        elEnvoi.textContent = 'Recevoir le bon';
+        montreErreur(elErreur, '');
+        valide();
+      }
+    };
+  }
+
+  function privatisation() {
+    var envoiEnCours = false;
+    var elEnvoi, elErreur, elResume;
+
+    /* Bornes du sélecteur de date : aujourd'hui, et douze mois plus tard. */
+    function borne(decalageMois) {
+      var d = new Date();
+      d.setMonth(d.getMonth() + decalageMois);
+      return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+    }
+
+    function convivesCourant() {
+      var v = $('#p-convives').value.trim();
+      if (v === '') return null;
+      var n = Number(v);
+      if (!isFinite(n) || Math.floor(n) !== n || n < 8 || n > 22) return null;
+      return n;
+    }
+
+    function dateCourante() {
+      var v = $('#p-date').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+      if (v < borne(0) || v > borne(12)) return null;
+      return v;
+    }
+
+    function valide() {
+      var bon = dateCourante() !== null && convivesCourant() !== null && coordValides('p', false);
+      elEnvoi.disabled = envoiEnCours || !bon;
+      var n = convivesCourant();
+      elResume.textContent = n === null ? '' : n + ' convives';
+      return bon;
+    }
+
+    function envoie() {
+      if (envoiEnCours) return;
+
+      var date = dateCourante();
+      if (date === null) {
+        marqueChamp('p-date', 'Choisissez une date dans les douze prochains mois.');
+        montreErreur(elErreur, 'La date n’est pas valide.');
+        return;
+      }
+      var convives = convivesCourant();
+      if (convives === null) {
+        marqueChamp('p-convives', 'Entre 8 et 22 convives.');
+        montreErreur(elErreur, 'Le nombre de convives n’est pas valide.');
+        return;
+      }
+      if (!coordValides('p', true)) {
+        montreErreur(elErreur, 'Complétez vos coordonnées pour que nous puissions vous répondre.');
+        return;
+      }
+
+      envoiEnCours = true;
+      elEnvoi.disabled = true;
+      elEnvoi.textContent = 'Envoi…';
+      montreErreur(elErreur, '');
+
+      var coord = litCoord('p');
+      API.post('privatisations', {
+        date: date,
+        convives: convives,
+        type: $('#p-type').value,
+        nom: coord.nom, tel: coord.tel, mail: coord.mail, note: coord.note
+      }).then(function (rep) {
+        envoiEnCours = false;
+        $('#p-ref').textContent = rep.reference;
+        $('#p-done-text').textContent =
+          /* jourLong attend une Date : l'API renvoie une chaîne ISO. Midi évite
+             qu'un décalage de fuseau ne fasse reculer d'un jour. */
+          rep.typeLibelle + ' pour ' + rep.convives + ' personnes, le ' +
+          jourLong(new Date(rep.date + 'T12:00:00')) + '.' +
+          (rep.emailEnvoye ? ' Un accusé de réception part vers ' + coord.mail + '.' : '') +
+          ' La salle n’est pas encore bloquée : nous vous recontactons sous quarante-huit heures.';
+        montreFin($('#sheet-privatiser'));
+        say('Demande de privatisation reçue, référence ' + rep.reference);
+      }, function (e) {
+        envoiEnCours = false;
+        elEnvoi.textContent = 'Envoyer la demande';
+        elEnvoi.disabled = false;
+        reposeErreurs('p', e.champs);
+        if (e.code === 'date_invalide' || e.code === 'hors_horizon') marqueChamp('p-date', e.message);
+        if (e.code === 'convives_invalide') marqueChamp('p-convives', e.message);
+        montreErreur(elErreur, e.message);
+      });
+    }
+
+    return {
+      init: function () {
+        var feuille = $('#sheet-privatiser');
+        if (!feuille) return;
+
+        elEnvoi = $('#p-send');
+        elErreur = $('#p-error');
+        elResume = $('#p-summary');
+
+        var elDate = $('#p-date');
+        elDate.min = borne(0);
+        elDate.max = borne(12);
+
+        ['p-date', 'p-convives', 'p-type'].forEach(function (id) {
+          var el = $('#' + id);
+          el.addEventListener('input', function () { marqueChamp(id, ''); montreErreur(elErreur, ''); valide(); });
+          el.addEventListener('change', valide);
+        });
+
+        COORD.forEach(function (c) {
+          var el = $('#p-' + c.suffixe);
+          el.addEventListener('input', valide);
+          el.addEventListener('blur', function () { coordValides('p', true); });
+        });
+
+        elEnvoi.addEventListener('click', envoie);
+        valide();
+      },
+      reinitSiTermine: function () {
+        if (!reinitFeuille($('#sheet-privatiser'))) return;
+        envoiEnCours = false;
+        elEnvoi.textContent = 'Envoyer la demande';
+        /* Le sélecteur de type n'est pas un input : reinitFeuille ne le touche pas. */
+        $('#p-type').selectedIndex = 0;
+        montreErreur(elErreur, '');
+        valide();
+      }
+    };
+  }
+
+  var bonCadeau = cadeau();
+  var privatiser = privatisation();
+
   function demarre() {
     gardeMedias();
     preloader();
@@ -1226,6 +1569,8 @@
     voyage();
     reservation.init();
     panier.init();
+    bonCadeau.init();
+    privatiser.init();
     feuilles();
 
     /* Les deux affichages de la carte attendent la même réponse. */

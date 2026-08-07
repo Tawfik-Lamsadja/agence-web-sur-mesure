@@ -6,6 +6,7 @@ const { json, erreur, corpsJson, ipClient } = require('../shared/http');
 const { coordonnees, entier } = require('../shared/valide');
 const { envoie, gabarit } = require('../shared/email');
 const quota = require('../shared/quota');
+const fidelite = require('../shared/fidelite');
 const S = require('../shared/service');
 
 const PLAFOND_HORAIRE = 8;
@@ -81,6 +82,11 @@ app.http('reservations', {
       return erreur(503, 'indisponible', 'La réservation n’a pas pu être enregistrée. Réessayez.');
     }
 
+    /* La visite est comptée dès l'enregistrement : le site n'a pas de pointage
+       à l'arrivée qui permettrait de distinguer une table honorée d'une table
+       désertée. */
+    const compteur = await fidelite.enregistreVisite(mail, 'reservation', contexte);
+
     const quand = `${jourLong(date)} à ${creneau.replace(':', 'h')}`;
     const intro = `Votre table est retenue, ${nom}.`;
     const pied = `Un acompte de ${euros(acompte)} serait normalement demandé, puis déduit de l’addition. Pour annuler, appelez le +32 2 512 04 77 au plus tard vingt-quatre heures avant.`;
@@ -89,6 +95,7 @@ app.http('reservations', {
       ['Convives', `${convives} ${convives > 1 ? 'personnes' : 'personne'}`],
       ['Place', table.nom],
       ['Au nom de', nom],
+      ['Fidélité', fidelite.mention(compteur)],
       ['Note', note]
     ];
 
@@ -106,6 +113,7 @@ app.http('reservations', {
       tableNom: table.nom,
       convives,
       acompteCents: acompte,
+      fidelite: compteur,
       emailEnvoye: envoye
     });
   }

@@ -6,7 +6,10 @@ const TABLES = {
   reservations: 'reservations',
   commandes: 'commandes',
   carte: 'carte',
-  quotas: 'quotas'
+  quotas: 'quotas',
+  fidelite: 'fidelite',
+  bons: 'bons',
+  privatisations: 'privatisations'
 };
 
 /* Table Storage ne connaît que des propriétés plates : les listes voyagent
@@ -72,14 +75,23 @@ function cleReservation(creneau, tableId) {
   return assainit(String(creneau).replace(':', '')) + '_' + assainit(tableId);
 }
 
+/* La fidélité se lit par adresse : celle-ci sert de clé de ligne, normalisée en
+   minuscules pour que « Jean@X.be » et « jean@x.be » soient le même client. */
+function cleMail(mail) {
+  return assainit(String(mail).trim().toLowerCase());
+}
+
 const reservations = () => table(TABLES.reservations);
 const commandes = () => table(TABLES.commandes);
 const carte = () => table(TABLES.carte);
 const quotas = () => table(TABLES.quotas);
+const fidelite = () => table(TABLES.fidelite);
+const bons = () => table(TABLES.bons);
+const privatisations = () => table(TABLES.privatisations);
 
 module.exports = {
   TABLES, table, service,
-  reservations, commandes, carte, quotas,
-  estConflit, estAbsent, cleReservation, assainit,
+  reservations, commandes, carte, quotas, fidelite, bons, privatisations,
+  estConflit, estAbsent, cleReservation, cleMail, assainit,
   empaquette, depaquette
 };

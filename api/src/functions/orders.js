@@ -7,6 +7,7 @@ const { coordonnees, entier } = require('../shared/valide');
 const { envoie, gabarit } = require('../shared/email');
 const menu = require('../shared/menu');
 const quota = require('../shared/quota');
+const fidelite = require('../shared/fidelite');
 const S = require('../shared/service');
 
 const PLAFOND_HORAIRE = 8;
@@ -104,6 +105,10 @@ app.http('orders', {
       return erreur(503, 'indisponible', 'La commande n’a pas pu être enregistrée. Réessayez.');
     }
 
+    /* Comme pour les réservations : la visite est comptée à l'enregistrement,
+       faute d'un pointage au retrait. */
+    const compteur = await fidelite.enregistreVisite(mail, 'commande', contexte);
+
     const quand = retrait.toLocaleString('fr-BE', {
       weekday: 'long', day: 'numeric', month: 'long',
       hour: '2-digit', minute: '2-digit', timeZone: S.FUSEAU
@@ -116,7 +121,7 @@ app.http('orders', {
       destinataire: mail,
       nom,
       sujet: `Commande à emporter · ${reference}`,
-      html: gabarit('Commande enregistrée', intro, detail.concat([['Total', euros(total)], ['Retrait', quand]]), reference, pied),
+      html: gabarit('Commande enregistrée', intro, detail.concat([['Total', euros(total)], ['Retrait', quand], ['Fidélité', fidelite.mention(compteur)]]), reference, pied),
       texte: `${intro}\n\n${lignes.map((l) => `${l.qte} × ${l.nom} — ${euros(l.sousTotal)}`).join('\n')}\n\nTotal : ${euros(total)}\nRetrait : ${quand}\nRéférence : ${reference}\n\n${pied}\n\nSite de démonstration : Ô'resto n'existe pas, aucune commande ne sera préparée.`
     }, contexte);
 
@@ -126,6 +131,7 @@ app.http('orders', {
       totalCents: total,
       pieces,
       retrait: retrait.toISOString(),
+      fidelite: compteur,
       emailEnvoye: envoye
     });
   }

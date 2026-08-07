@@ -1,13 +1,27 @@
 name: Azure Static Web Apps CI/CD
 
+# DESACTIVE TEMPORAIREMENT.
+#
+# Ce depot n'a pas encore de ressource Azure Static Web Apps : le secret
+# AZURE_STATIC_WEB_APPS_API_TOKEN_BLUE_OCEAN_063F9AC03 reference plus bas
+# appartient au depot agence-web et n'existe pas ici. Chaque push echouerait.
+#
+# Les declencheurs automatiques sont donc remplaces par un lancement manuel.
+# Pour reactiver, une fois la Static Web App creee et son secret ajoute dans
+# Settings > Secrets and variables > Actions, remettre :
+#
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     types: [opened, synchronize, reopened, closed]
+#     branches:
+#       - main
+#
+# Azure regenere de toute facon son propre fichier de workflow au moment ou
+# la ressource est reliee au depot : le plus simple sera de le laisser faire.
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build_and_deploy_job:

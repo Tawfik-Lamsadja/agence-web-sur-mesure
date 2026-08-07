@@ -282,6 +282,8 @@
       <div class="infos__cta">
         <button type="button" class="btn btn--solid" data-open="reserver">Réserver une table</button>
         <button type="button" class="btn btn--ghost" data-open="commander">Commander à emporter</button>
+        <button type="button" class="btn btn--ghost" data-open="cadeau">Offrir un bon</button>
+        <button type="button" class="btn btn--ghost" data-open="privatiser">Privatiser la salle</button>
       </div>
     </div>
 
@@ -529,6 +531,165 @@
       <button type="button" class="btn btn--outline" id="cart-done-close">Fermer</button>
     </div>
   </aside>
+</section>
+
+<!-- ==================== FEUILLE : BON CADEAU ==================== -->
+<section class="sheet sheet--simple" id="sheet-cadeau" role="dialog" aria-modal="true" aria-labelledby="cadeau-titre" hidden>
+  <div class="sheet__scrim" data-close></div>
+  <div class="sheet__panel">
+    <header class="sheet__head">
+      <div class="sheet__title">
+        <p class="overline">Ô'resto</p>
+        <h2 id="cadeau-titre" class="display display--s">Offrir un bon</h2>
+      </div>
+      <button type="button" class="sheet__close" data-close aria-label="Fermer le bon cadeau"></button>
+    </header>
+
+    <div class="sheet__body">
+      <section class="step is-active" data-step="0" aria-label="Montant et coordonnées">
+        <h3 class="step__title">Quel montant ?</h3>
+        <p class="step__help">Le bon s'utilise en une fois, sur place comme à emporter, pendant douze mois.</p>
+
+        <div class="party" role="group" aria-label="Montant du bon" id="g-montants">
+          <button type="button" class="chip" data-montant="2500" aria-pressed="false">25 €</button>
+          <button type="button" class="chip" data-montant="5000" aria-pressed="false">50 €</button>
+          <button type="button" class="chip" data-montant="10000" aria-pressed="false">100 €</button>
+        </div>
+
+        <div class="form">
+          <div class="field">
+            <label for="g-libre">Autre montant <span class="field__opt">(facultatif)</span></label>
+            <input type="number" id="g-libre" name="montant" min="10" max="500" step="1" inputmode="numeric" placeholder="En euros">
+            <p class="field__hint">De 10 à 500 €, par euro entier.</p>
+            <p class="field__err" data-err-for="g-libre" hidden></p>
+          </div>
+        </div>
+
+        <h3 class="step__title">Vos coordonnées</h3>
+        <p class="step__help">Le bon part à cette adresse. Nous n'envoyons rien d'autre.</p>
+        <div class="form">
+          <div class="field">
+            <label for="g-nom">Nom et prénom</label>
+            <input type="text" id="g-nom" name="nom" autocomplete="name" required>
+            <p class="field__err" data-err-for="g-nom" hidden></p>
+          </div>
+          <div class="field">
+            <label for="g-tel">Téléphone</label>
+            <input type="tel" id="g-tel" name="tel" autocomplete="tel" placeholder="+32 470 00 00 00" required>
+            <p class="field__err" data-err-for="g-tel" hidden></p>
+          </div>
+          <div class="field">
+            <label for="g-mail">Adresse e-mail</label>
+            <input type="email" id="g-mail" name="email" autocomplete="email" required>
+            <p class="field__err" data-err-for="g-mail" hidden></p>
+          </div>
+          <div class="field field--full">
+            <label for="g-note">Mot pour la personne <span class="field__opt">(facultatif)</span></label>
+            <textarea id="g-note" name="note" rows="3"></textarea>
+          </div>
+        </div>
+        <p class="demo-note">Démonstration : aucun paiement n'est réellement effectué.</p>
+      </section>
+
+      <section class="step step--done" data-step="1" aria-label="Bon cadeau émis" hidden>
+        <svg class="enso enso--seal" viewBox="0 0 240 240" aria-hidden="true" focusable="false"><use href="#ensoShape"></use></svg>
+        <h3 class="display display--m">Le bon est prêt.</h3>
+        <p class="done__ref">Code <strong id="g-ref"></strong></p>
+        <p class="done__text" id="g-done-text"></p>
+        <button type="button" class="btn btn--outline" data-close>Fermer</button>
+      </section>
+    </div>
+
+    <footer class="sheet__foot">
+      <p class="sheet__summary" id="g-summary"></p>
+      <p class="form__error" id="g-error" role="alert" hidden></p>
+      <button type="button" class="btn btn--solid" id="g-send" disabled>Recevoir le bon</button>
+    </footer>
+  </div>
+</section>
+
+<!-- ==================== FEUILLE : PRIVATISATION ==================== -->
+<section class="sheet sheet--simple" id="sheet-privatiser" role="dialog" aria-modal="true" aria-labelledby="privatiser-titre" hidden>
+  <div class="sheet__scrim" data-close></div>
+  <div class="sheet__panel">
+    <header class="sheet__head">
+      <div class="sheet__title">
+        <p class="overline">Ô'resto</p>
+        <h2 id="privatiser-titre" class="display display--s">Privatiser la salle</h2>
+      </div>
+      <button type="button" class="sheet__close" data-close aria-label="Fermer la privatisation"></button>
+    </header>
+
+    <div class="sheet__body">
+      <section class="step is-active" data-step="0" aria-label="Votre événement">
+        <h3 class="step__title">Votre événement</h3>
+        <p class="step__help">La salle entière, vingt-deux couverts. Dimanche et lundi compris : ce sont nos jours de fermeture, donc les plus faciles à vous donner.</p>
+
+        <div class="form">
+          <div class="field">
+            <label for="p-date">Date souhaitée</label>
+            <input type="date" id="p-date" name="date" required>
+            <p class="field__hint">Dans les douze prochains mois.</p>
+            <p class="field__err" data-err-for="p-date" hidden></p>
+          </div>
+          <div class="field">
+            <label for="p-convives">Nombre de convives</label>
+            <input type="number" id="p-convives" name="convives" min="8" max="22" step="1" inputmode="numeric" required>
+            <p class="field__hint">De 8 à 22, la salle entière. En dessous, une réservation ordinaire suffit.</p>
+            <p class="field__err" data-err-for="p-convives" hidden></p>
+          </div>
+          <div class="field field--full">
+            <label for="p-type">Type d'événement</label>
+            <select id="p-type" name="type" required>
+              <option value="anniversaire">Anniversaire</option>
+              <option value="affaires">Repas d'affaires</option>
+              <option value="mariage">Mariage</option>
+              <option value="seminaire">Séminaire</option>
+              <option value="autre">Autre</option>
+            </select>
+            <p class="field__err" data-err-for="p-type" hidden></p>
+          </div>
+        </div>
+
+        <h3 class="step__title">Vos coordonnées</h3>
+        <div class="form">
+          <div class="field">
+            <label for="p-nom">Nom et prénom</label>
+            <input type="text" id="p-nom" name="nom" autocomplete="name" required>
+            <p class="field__err" data-err-for="p-nom" hidden></p>
+          </div>
+          <div class="field">
+            <label for="p-tel">Téléphone</label>
+            <input type="tel" id="p-tel" name="tel" autocomplete="tel" placeholder="+32 470 00 00 00" required>
+            <p class="field__err" data-err-for="p-tel" hidden></p>
+          </div>
+          <div class="field">
+            <label for="p-mail">Adresse e-mail</label>
+            <input type="email" id="p-mail" name="email" autocomplete="email" required>
+            <p class="field__err" data-err-for="p-mail" hidden></p>
+          </div>
+          <div class="field field--full">
+            <label for="p-note">Ce que vous imaginez <span class="field__opt">(facultatif)</span></label>
+            <textarea id="p-note" name="note" rows="3" placeholder="Budget, menu, horaires, contraintes…"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="step step--done" data-step="1" aria-label="Demande reçue" hidden>
+        <svg class="enso enso--seal" viewBox="0 0 240 240" aria-hidden="true" focusable="false"><use href="#ensoShape"></use></svg>
+        <h3 class="display display--m">Demande reçue.</h3>
+        <p class="done__ref">Référence <strong id="p-ref"></strong></p>
+        <p class="done__text" id="p-done-text"></p>
+        <button type="button" class="btn btn--outline" data-close>Fermer</button>
+      </section>
+    </div>
+
+    <footer class="sheet__foot">
+      <p class="sheet__summary" id="p-summary"></p>
+      <p class="form__error" id="p-error" role="alert" hidden></p>
+      <button type="button" class="btn btn--solid" id="p-send" disabled>Envoyer la demande</button>
+    </footer>
+  </div>
 </section>
 
 <p class="sr-only" role="status" aria-live="polite" id="live"></p>
