@@ -62,8 +62,11 @@ function monte(THREE) {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 30);
-  camera.position.set(0, 1.7, 5.4);
-  camera.lookAt(0, 0.1, 0);
+  /* Recul suffisant pour que le plateau entier tienne dans le cadre : à 7,4
+     unités, le demi-champ vaut ~2,1 — le disque (rayon 1,85) reste entouré
+     de vide et sa tranche se lit comme une assiette, pas comme une dalle. */
+  camera.position.set(0, 2.1, 7.4);
+  camera.lookAt(0, -0.05, 0);
 
   /* ----- l'objet : plateau de laque, riz, tranche ----- */
   const groupe = new THREE.Group();
@@ -71,7 +74,7 @@ function monte(THREE) {
   scene.add(groupe);
 
   const plateau = new THREE.Mesh(
-    new THREE.CylinderGeometry(2.3, 2.36, 0.14, 64),
+    new THREE.CylinderGeometry(1.85, 1.9, 0.14, 64),
     new THREE.MeshStandardMaterial({ color: C.laque, roughness: 0.28, metalness: 0.35 })
   );
   plateau.position.y = -0.42;
