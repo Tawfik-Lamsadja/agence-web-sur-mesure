@@ -1419,6 +1419,93 @@ p { max-width: var(--w-text); }
   .step--done .enso--seal { width: 66px; }
 }
 
+/* ============ Mouvement piloté par le défilement (natif) ===============
+
+   Règle de sûreté : l'état d'entrée — opacité nulle, décalage — n'est jamais
+   posé dans le CSS de base. Il ne l'est que dans les deux branches capables de
+   l'annuler : @supports pour le natif, .js-reveal pour le repli JavaScript.
+   Un navigateur qui ne sait faire ni l'un ni l'autre, ou un visiteur sans
+   JavaScript, voit le contenu normalement. Jamais de texte rendu invisible par
+   une animation qui ne viendra pas.
+
+   Le support n'est pas Baseline : Chrome et Edge depuis 115, Safari depuis 26,
+   Firefox encore incertain selon les sources. D'où le @supports, qui n'est pas
+   ici une précaution de confort. */
+
+@keyframes monte {
+  from { opacity: 0; transform: translateY(var(--monte, 28px)); }
+  to   { opacity: 1; transform: none; }
+}
+
+@supports (animation-timeline: view()) {
+  .carte__head .display,
+  .carte__head .lede,
+  .carte__grid > *,
+  .carte__plate,
+  .carte__cta,
+  .infos__text,
+  .infos__media {
+    animation: monte linear both;
+    /* view() suit la traversée de l'élément dans le viewport ; scroll(), plus
+       bas, suit la progression du document entier. Ce sont deux timelines
+       différentes, et c'est view() qu'il faut pour une entrée par élément. */
+    animation-timeline: view();
+    animation-range: entry 10% cover 32%;
+  }
+
+  /* La colonne décalée entre plus tard que sa voisine : le retard prolonge
+     dans le temps le décrochage que la grille installe dans l'espace. */
+  .carte__grid > :last-child { animation-range: entry 2% cover 42%; }
+
+  /* La façade est plus lourde : elle monte de plus loin, plus lentement. */
+  .infos__media { --monte: 44px; animation-range: entry 0% cover 40%; }
+
+  .carte__plate { --monte: 36px; }
+}
+
+/* Jauge de lecture : le seul endroit où scroll() est le bon outil, puisqu'il
+   s'agit de la progression du document et non d'un élément. */
+.jauge {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 2px;
+  /* Au-dessus de l'en-tête (90), sous les feuilles (120) : une jauge de
+     lecture n'a rien à faire par-dessus une modale. */
+  z-index: 95;
+  background: var(--c-shu);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+@keyframes jauge-avance { to { transform: scaleX(1); } }
+
+@supports (animation-timeline: scroll()) {
+  .jauge {
+    animation: jauge-avance linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+/* ---- Repli JavaScript : IntersectionObserver ----
+   Posé par main.js seulement quand le natif manque. La transition remplace la
+   timeline : l'entrée se déclenche au franchissement, sans suivre le
+   défilement. */
+.js-reveal .carte__head .display,
+.js-reveal .carte__head .lede,
+.js-reveal .carte__grid > *,
+.js-reveal .carte__plate,
+.js-reveal .carte__cta,
+.js-reveal .infos__text,
+.js-reveal .infos__media {
+  opacity: 0;
+  transform: translateY(var(--monte, 28px));
+  transition: opacity 760ms var(--e-soft), transform 760ms var(--e-soft);
+}
+.js-reveal .is-revele {
+  opacity: 1;
+  transform: none;
+}
+
 /* ================ Mouvement réduit : tout devient fixe ================== */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -1428,6 +1515,29 @@ p { max-width: var(--w-text); }
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
+    /* Indispensable : une animation pilotée au défilement tire sa progression
+       de la timeline, pas de sa durée. Le 1ms ci-dessus ne l'arrêterait pas. */
+    animation-timeline: none !important;
+  }
+
+  .jauge { display: none; }
+
+  /* Les entrées de section sont supprimées, pas seulement raccourcies — et
+     leur état final est imposé. Une animation privée de timeline a un temps
+     courant non résolu : selon l'implémentation, un fill-mode « both » peut la
+     figer sur son état initial, donc à opacité nulle. Le contenu resterait
+     invisible. On ne parie pas là-dessus. */
+  .carte__head .display,
+  .carte__head .lede,
+  .carte__grid > *,
+  .carte__plate,
+  .carte__cta,
+  .infos__text,
+  .infos__media {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
 
   .hero__media .media__el { animation: none; transform: none; }

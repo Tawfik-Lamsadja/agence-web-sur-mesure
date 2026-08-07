@@ -1599,6 +1599,61 @@
   var bonCadeau = cadeau();
   var privatiser = privatisation();
 
+  /* ===================================================================
+     12. Repli du mouvement piloté par le défilement
+
+     Quand animation-timeline manque, les entrées de section sont rejouées
+     par IntersectionObserver. Le CSS ne pose l'état masqué que sous la
+     classe js-reveal, ajoutée ici : sans JavaScript, ou sans observateur,
+     rien n'est masqué et le contenu s'affiche normalement.
+     =================================================================== */
+  var CIBLES_ENTREE = [
+    '.carte__head .display',
+    '.carte__head .lede',
+    '.carte__grid > *',
+    '.carte__plate',
+    '.carte__cta',
+    '.infos__text',
+    '.infos__media'
+  ].join(', ');
+
+  function entrees() {
+    /* Le natif s'en charge : ne rien doubler. */
+    var natif = window.CSS && CSS.supports && CSS.supports('animation-timeline', 'view()');
+    if (natif) return;
+
+    /* Mouvement réduit : le contenu reste en place, sans entrée du tout. */
+    if (reduce) return;
+    if (!('IntersectionObserver' in window)) return;
+
+    var cibles = $$(CIBLES_ENTREE);
+    if (!cibles.length) return;
+
+    document.documentElement.classList.add('js-reveal');
+
+    var io = new IntersectionObserver(function (vues) {
+      vues.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        e.target.classList.add('is-revele');
+        io.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+
+    cibles.forEach(function (c) { io.observe(c); });
+
+    /* Un élément déjà à l'écran au chargement ne déclenche pas toujours
+       l'observateur avant la première peinture : on le révèle d'office. */
+    requestAnimationFrame(function () {
+      cibles.forEach(function (c) {
+        var r = c.getBoundingClientRect();
+        if (r.top < window.innerHeight && r.bottom > 0) {
+          c.classList.add('is-revele');
+          io.unobserve(c);
+        }
+      });
+    });
+  }
+
   function demarre() {
     gardeMedias();
     preloader();
@@ -1610,6 +1665,7 @@
     bonCadeau.init();
     privatiser.init();
     feuilles();
+    entrees();
 
     /* Les deux affichages de la carte attendent la même réponse. */
     chargeCarte().then(function () {
