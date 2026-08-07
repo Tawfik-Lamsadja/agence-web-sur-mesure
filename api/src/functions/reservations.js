@@ -1,7 +1,7 @@
 'use strict';
 
 const { app } = require('@azure/functions');
-const { reservations } = require('../shared/cosmos');
+const { reservations, cleReservation, estConflit } = require('../shared/storage');
 const { json, erreur, corpsJson, ipClient } = require('../shared/http');
 const { coordonnees, entier } = require('../shared/valide');
 const { envoie, gabarit } = require('../shared/email');
@@ -57,11 +57,12 @@ app.http('reservations', {
     const acompte = S.ACOMPTE_CENTS * convives;
     const reference = S.reference('OR');
 
-    /* L'identifiant porte la date, le créneau et la table : Cosmos refuse alors
-       lui-même la seconde écriture, deux clics simultanés ne peuvent pas vendre
-       la même place deux fois. */
-    const document = {
-      id: `${date}|${creneau}|${tableId}`,
+    /* La date fait la clé de partition, le couple créneau/table la clé de ligne :
+       l'insertion est rejetée d'office si le triplet existe déjà. Deux clics
+       simultanés ne peuvent donc pas vendre la même place deux fois. */
+    const entite = {
+      partitionKey: date,
+      rowKey: cleReservation(creneau, tableId),
       date, creneau, tableId, convives,
       nom, tel, mail, note,
       reference,
@@ -71,9 +72,9 @@ app.http('reservations', {
     };
 
     try {
-      await reservations().items.create(document);
+      await reservations().createEntity(entite);
     } catch (e) {
-      if (e.code === 409) {
+      if (estConflit(e)) {
         return erreur(409, 'place_prise', 'Cette place vient d’être réservée. Choisissez-en une autre.');
       }
       contexte.error(`Écriture de la réservation impossible : ${e.message}`);

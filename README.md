@@ -55,9 +55,29 @@ ASSETS.md                  liste des assets et prompts de génération
 
 api/                       Azure Functions, Node.js
   src/functions/           les quatre points d'entrée HTTP
-  src/shared/              règles de service, Cosmos, Brevo, validation
-  scripts/seed-menu.js     crée la base, les conteneurs et charge la carte
+  src/shared/              règles de service, stockage, Brevo, validation
+  scripts/seed-menu.js     crée les tables et charge la carte
 ```
+
+## Le stockage
+
+Azure Table Storage, quatre tables dans le compte `orestodemo2026` :
+
+| Table | Clé de partition | Clé de ligne |
+|---|---|---|
+| `reservations` | la date | `créneau_table` |
+| `commandes` | le jour de retrait | la référence |
+| `carte` | `carte` | l'identifiant de catégorie |
+| `quotas` | `action \| IP` | un identifiant tiré au hasard |
+
+Deux conséquences de ce modèle méritent d'être connues :
+
+- Une entité ne porte que des propriétés plates. Les listes — les plats d'une
+  catégorie, les lignes d'une commande — sont donc stockées sérialisées en JSON
+  dans une colonne de texte.
+- Table Storage n'expire rien tout seul. Les compteurs de quota portent leur
+  propre date de péremption : les entrées périmées ne sont pas comptées et sont
+  effacées au passage.
 
 ## L'API
 
@@ -70,15 +90,16 @@ api/                       Azure Functions, Node.js
 
 Trois garde-fous portent tout l'édifice :
 
-- **Une place ne se vend pas deux fois.** L'identifiant du document vaut
-  `date|créneau|table` : Cosmos refuse lui-même la seconde écriture. Deux clics
-  simultanés ne peuvent pas réserver la même table, et le second visiteur est
-  ramené au plan de salle avec la raison affichée.
+- **Une place ne se vend pas deux fois.** La date fait la clé de partition, le
+  couple créneau/table la clé de ligne : Table Storage rejette lui-même la
+  seconde insertion sur le même triplet. Deux clics simultanés ne peuvent pas
+  réserver la même table, et le second visiteur est ramené au plan de salle avec
+  la raison affichée.
 - **Les prix ne viennent jamais du navigateur.** Le total d'une commande est
   recalculé depuis la carte en base. Un panier trafiqué est sans effet.
 - **Les points d'entrée publics sont plafonnés.** Ils envoient un e-mail vers une
   adresse fournie par l'appelant : sans plafond par IP, ils serviraient à
-  spammer des tiers. Les compteurs portent un TTL et se vident seuls.
+  spammer des tiers.
 
 Le service raisonne en heure de Bruxelles, jamais dans le fuseau du serveur ni
 dans celui du visiteur.
@@ -88,7 +109,7 @@ dans celui du visiteur.
 HTML, CSS et JavaScript natifs côté page : aucun framework, aucune étape de
 build. Seules les polices viennent de Google Fonts (Cormorant Garamond et
 Karla). L'API est en Node.js et n'a que deux dépendances, `@azure/functions` et
-`@azure/cosmos`.
+`@azure/data-tables`.
 
 - Toutes les couleurs sont des variables CSS déclarées en tête de feuille.
 - Un média absent est masqué par le script : l'emplacement conserve son aplat
@@ -101,20 +122,16 @@ Karla). L'API est en Node.js et n'a que deux dépendances, `@azure/functions` et
 
 ## Mise en service
 
-Tout tient dans les paliers gratuits, sans date d'expiration.
+L'hébergement et les e-mails tiennent dans les paliers gratuits. Le stockage,
+lui, est facturé à l'usage : à ce volume, la dépense se compte en fractions de
+centime par mois, mais elle n'est pas nulle au sens strict.
 
-### 1. Cosmos DB
+### 1. Compte de stockage
 
-Dans le portail Azure, créer un compte **Azure Cosmos DB for NoSQL** en
-activant **Appliquer la remise de niveau gratuit**. Ce palier offre 1000 RU/s et
-25 Go à vie et couvre intégralement cet usage.
+Le compte **orestodemo2026** (West Europe) est déjà en place. Relever sa chaîne
+de connexion sous *Sécurité + réseau · Clés d'accès*.
 
-> Un seul compte au palier gratuit est autorisé par abonnement. Si l'option est
-> grisée, c'est qu'un autre compte l'occupe déjà.
-
-Relever, sous *Clés*, l'URI et la clé primaire.
-
-### 2. Créer la base et charger la carte
+### 2. Créer les tables et charger la carte
 
 ```bash
 cd api
@@ -123,8 +140,8 @@ cp local.settings.json.exemple local.settings.json   # puis renseigner les valeu
 npm run seed
 ```
 
-Le script crée la base, les quatre conteneurs avec leurs clés de partition, puis
-charge la carte. Il est relançable sans risque.
+Le script crée les quatre tables puis charge la carte. Il est relançable sans
+risque : les tables existantes sont réutilisées et la carte est remplacée.
 
 ### 3. Brevo
 
@@ -139,9 +156,7 @@ déployée. Dans *Configuration*, ajouter les variables d'application :
 
 | Nom | Valeur |
 |---|---|
-| `COSMOS_ENDPOINT` | l'URI relevée à l'étape 1 |
-| `COSMOS_KEY` | la clé primaire |
-| `COSMOS_DATABASE` | `oresto` |
+| `AZURE_STORAGE_CONNECTION_STRING` | la chaîne relevée à l'étape 1 |
 | `BREVO_API_KEY` | la clé de l'étape 3 |
 | `BREVO_SENDER_EMAIL` | l'adresse vérifiée |
 | `BREVO_SENDER_NAME` | `Ô'resto (démonstration)` |

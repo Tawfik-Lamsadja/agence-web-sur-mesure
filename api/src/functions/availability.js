@@ -1,7 +1,7 @@
 'use strict';
 
 const { app } = require('@azure/functions');
-const { reservations } = require('../shared/cosmos');
+const { reservations } = require('../shared/storage');
 const { json, erreur } = require('../shared/http');
 const S = require('../shared/service');
 
@@ -30,15 +30,17 @@ app.http('availability', {
       });
     }
 
-    let prises = [];
+    /* Toutes les réservations d'un jour tiennent dans une seule partition :
+       la lecture ne balaie jamais la table entière. */
+    const prises = [];
     try {
-      const { resources } = await reservations().items
-        .query({
-          query: 'SELECT c.creneau, c.tableId FROM c WHERE c.date = @date AND c.statut = @statut',
-          parameters: [{ name: '@date', value: date }, { name: '@statut', value: 'confirmee' }]
-        }, { partitionKey: date })
-        .fetchAll();
-      prises = resources;
+      const entites = reservations().listEntities({
+        queryOptions: {
+          filter: `PartitionKey eq '${date}' and statut eq 'confirmee'`,
+          select: ['creneau', 'tableId']
+        }
+      });
+      for await (const e of entites) prises.push({ creneau: e.creneau, tableId: e.tableId });
     } catch (e) {
       contexte.error(`Lecture des disponibilités impossible : ${e.message}`);
       return erreur(503, 'indisponible', 'Les disponibilités sont momentanément inaccessibles.');

@@ -1,7 +1,7 @@
 'use strict';
 
 const { app } = require('@azure/functions');
-const { commandes } = require('../shared/cosmos');
+const { commandes, empaquette } = require('../shared/storage');
 const { json, erreur, corpsJson, ipClient } = require('../shared/http');
 const { coordonnees, entier } = require('../shared/valide');
 const { envoie, gabarit } = require('../shared/email');
@@ -85,11 +85,13 @@ app.http('orders', {
     const jourRetrait = S.jourISO(retrait);
 
     try {
-      await commandes().items.create({
-        id: reference,
+      await commandes().createEntity({
+        partitionKey: jourRetrait,
+        rowKey: reference,
         jourRetrait,
         retrait: retrait.toISOString(),
-        articles: lignes,
+        /* Une entité ne porte que des propriétés plates : le détail est sérialisé. */
+        articles: empaquette(lignes),
         totalCents: total,
         pieces,
         nom, tel, mail, note,

@@ -4,9 +4,7 @@
     "FUNCTIONS_WORKER_RUNTIME": "node",
     "AzureWebJobsStorage": "",
 
-    "COSMOS_ENDPOINT": "https://VOTRE-COMPTE.documents.azure.com:443/",
-    "COSMOS_KEY": "votre-clé-primaire",
-    "COSMOS_DATABASE": "oresto",
+    "AZURE_STORAGE_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=orestodemo2026;AccountKey=votre-clé;EndpointSuffix=core.windows.net",
 
     "BREVO_API_KEY": "votre-clé-brevo",
     "BREVO_SENDER_EMAIL": "adresse-vérifiée@exemple.be",
