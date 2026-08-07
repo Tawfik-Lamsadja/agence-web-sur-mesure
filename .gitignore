@@ -11,3 +11,9 @@ bin/
 obj/
 *.log
 Thumbs.db
+
+# Reglages locaux de Claude Code : chemins absolus propres a la machine.
+.claude/settings.json
+
+# Visuel hors des 16 attendus par ASSETS.md, reference nulle part.
+assets/Décor.jpg
