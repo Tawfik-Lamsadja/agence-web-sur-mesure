@@ -74,6 +74,11 @@
     </div>
     <div class="hero__veil" aria-hidden="true"></div>
 
+    <!-- Pièce signature en 3D : décorative, remplie par js/piece3d.js
+         uniquement si WebGL est disponible et le mouvement autorisé.
+         À défaut, ce bloc reste vide et invisible : le hero est inchangé. -->
+    <div class="hero__piece" data-piece3d aria-hidden="true"></div>
+
     <div class="hero__body">
       <p class="overline">Rue de Flandre, Bruxelles</p>
       <h1 class="display display--xl">Vingt-deux couverts,<br>un comptoir,<br><em>une pièce à la fois.</em></h1>
@@ -733,5 +738,6 @@
 <p class="sr-only" role="status" aria-live="polite" id="live"></p>
 
 <script src="js/main.js" defer></script>
+<script src="js/piece3d.js" type="module"></script>
 </body>
 </html>

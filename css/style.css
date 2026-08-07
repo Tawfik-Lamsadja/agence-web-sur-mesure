@@ -325,6 +325,23 @@ p { max-width: var(--w-text); }
     linear-gradient(to right, rgba(12, 8, 16, 0.8) 0%, transparent 62%);
 }
 .hero__body { max-width: min(900px, 76vw); }
+
+/* Pièce signature en 3D : posée dans le vide à droite du hero, au-dessus du
+   voile mais hors de portée du curseur. Le bloc reste vide (donc invisible)
+   tant que piece3d.js n'a pas monté son canvas. */
+.hero__piece {
+  position: absolute;
+  right: var(--pad-x);
+  top: 20svh;
+  z-index: 0;
+  width: min(26vw, 360px);
+  aspect-ratio: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1400ms var(--e-soft);
+}
+.hero__piece.is-live { opacity: 1; }
+.hero__piece canvas { width: 100%; height: 100%; display: block; }
 .hero .lede { margin: var(--s-4) 0 var(--s-5); max-width: 46ch; }
 .hero__cta { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 
@@ -1337,6 +1354,10 @@ p { max-width: var(--w-text); }
 @media (max-width: 1180px) {
   .head__nav { display: none; }
 
+  /* Sous 1180 px, le texte du hero occupe la largeur : la pièce 3D n'a plus
+     de vide où vivre, et l'économie de batterie est bienvenue. */
+  .hero__piece { display: none; }
+
   /* Entre 900 et 1180 px, quatre travées rendraient le chapô trop étroit pour
      se lire : il en récupère une, la travée vide passe de deux à une. */
   .carte__head .lede { grid-column: 8 / -1; }
@@ -1555,6 +1576,8 @@ p { max-width: var(--w-text); }
 
   .hero__media .media__el { animation: none; transform: none; }
   .hero__cue-line::after { display: none; }
+  /* Pas d'objet en rotation : le script ne monte rien, la règle verrouille. */
+  .hero__piece { display: none; }
 
   /* Le voyage devient six chapitres empilés, images fixes, sans défilement piloté */
   .voyage__stage { position: static; height: auto; overflow: visible; }
