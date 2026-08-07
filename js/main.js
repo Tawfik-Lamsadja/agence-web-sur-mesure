@@ -1270,6 +1270,7 @@
   var panier = (function () {
     var lignes = {};
     var envoiEnCours = false;
+    var nbAvant = 0;
     var elTiroir, elCompte, elEnso, elTotal, elListe, elVide, elValider, elFini, elErreur;
 
     function nb() {
@@ -1292,6 +1293,14 @@
     function dessine() {
       var n = nb();
       elCompte.textContent = n;
+      /* Le compteur marque le coup à chaque changement — jamais au premier
+         dessin, jamais en mouvement réduit. */
+      if (n !== nbAvant && !reduce) {
+        elCompte.classList.remove('is-pop');
+        void elCompte.offsetWidth; /* relance l'animation */
+        elCompte.classList.add('is-pop');
+      }
+      nbAvant = n;
       $('#cart-open').classList.toggle('is-empty', n === 0);
       elEnso.style.setProperty('--enso-progress', Math.min(1, n / 8));
       elTotal.textContent = prix(total());
@@ -1401,6 +1410,12 @@
           if (dispo) {
             add.addEventListener('click', function () {
               ajoute(it.id, 1);
+              /* Une onde quitte le bouton : l'ajout s'est bien produit ici. */
+              if (!reduce) {
+                add.classList.remove('is-added');
+                void add.offsetWidth;
+                add.classList.add('is-added');
+              }
               say(it.nom + ' ajouté au panier, ' + nb() + ' article' + (nb() > 1 ? 's' : ''));
             });
           }

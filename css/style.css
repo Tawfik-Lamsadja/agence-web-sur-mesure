@@ -1462,6 +1462,77 @@ p { max-width: var(--w-text); }
   .step--done .enso--seal { width: 66px; }
 }
 
+/* ========================= 17. MICRO-DELIGHT ============================
+   Cinq réponses physiques sur les éléments qu'on touche : un ressort discret,
+   une ombre qui répond, une encre qui se pose. Rien ne clignote, rien ne
+   rebondit fort — la maison est feutrée. Le bloc prefers-reduced-motion en
+   fin de feuille neutralise l'ensemble (durées à 1 ms). */
+
+/* Courbe ressort commune : léger dépassement puis repos. */
+:root { --e-spring: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* 1 — Boutons : levée d'un pixel et ombre portée qui répond à la main. */
+.btn {
+  transition: background var(--t-fast) var(--e-soft),
+              border-color var(--t-fast) var(--e-soft),
+              color var(--t-fast) var(--e-soft),
+              transform var(--t-mid) var(--e-spring),
+              box-shadow var(--t-mid) var(--e-soft);
+}
+@media (hover: hover) {
+  .btn--solid:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px -14px rgba(192, 73, 43, 0.6);
+  }
+  .btn--outline:hover:not(:disabled) { transform: translateY(-1px); }
+}
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.985); box-shadow: none; }
+
+/* 2 — Lignes de la carte : un filet vermillon se pose au bord, le prix
+   reprend l'encre pleine. Aucun déplacement de mise en page. */
+@media (hover: hover) {
+  .cat__list li {
+    transition: background var(--t-fast) var(--e-soft),
+                box-shadow var(--t-mid) var(--e-out);
+  }
+  .cat__list li:hover {
+    background: linear-gradient(to right, var(--c-hover), transparent 72%);
+    box-shadow: inset 2px 0 0 var(--c-shu);
+  }
+  .cat__price { transition: color var(--t-fast) var(--e-soft); }
+  .cat__list li:hover .cat__price { color: var(--c-bone); }
+}
+
+/* 3 — Encre qui se pose : les chips (créneaux, convives, montants) et les
+   jours du calendrier se tassent puis se relèvent quand on les choisit. */
+@keyframes se-pose {
+  0%   { transform: scale(0.95); }
+  60%  { transform: scale(1.02); }
+  100% { transform: none; }
+}
+.chip[aria-pressed="true"],
+.cal__day[aria-pressed="true"] { animation: se-pose 260ms var(--e-out); }
+
+/* 4 — Plan de salle : la table choisie se pose de la même façon, et le
+   survol soulève avec une ombre qui suit. */
+.seat:hover:not(:disabled) { box-shadow: 0 10px 20px -12px rgba(8, 5, 11, 0.9); }
+.seat[aria-pressed="true"] { animation: se-pose 300ms var(--e-out); }
+
+/* 5 — Ajout au panier : une onde vermillon quitte le bouton, et le compteur
+   du panier marque le coup. Classes posées par main.js. */
+@keyframes onde {
+  from { box-shadow: 0 0 0 0 rgba(210, 89, 58, 0.45); }
+  to   { box-shadow: 0 0 0 16px rgba(210, 89, 58, 0); }
+}
+.dish__add.is-added { animation: onde 500ms var(--e-soft); }
+
+@keyframes marque {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.28); }
+  100% { transform: none; }
+}
+.cart-btn__count.is-pop { animation: marque 320ms var(--e-out); }
+
 /* ============ Mouvement piloté par le défilement (natif) ===============
 
    Règle de sûreté : l'état d'entrée — opacité nulle, décalage — n'est jamais
