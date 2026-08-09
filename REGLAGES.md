@@ -150,6 +150,35 @@ Section 17 de `css/style.css`, tout y est :
 Les deux classes pilotées par `js/main.js` : `.is-added` (bouton d'ajout) et
 `.is-pop` (compteur du panier).
 
+### Le plat qui rejoint le panier
+
+Sixième effet, ajouté par-dessus les cinq autres sans les remplacer : au clic,
+une vignette part du bouton, décrit un arc et se referme sur le panier.
+L'onde et le compteur jouent toujours en même temps. Le geste dit **où**
+l'article est allé, ce qu'un compteur qui change ne dit pas.
+
+La vignette porte la photo de la catégorie : les plats n'ont pas d'image
+propre. Le mouvement est écrit en JavaScript et non en CSS, parce qu'il dépend
+de deux positions à l'écran que la feuille de style ne connaît pas.
+
+Constante `VOL` dans `js/main.js` (section 8 bis) :
+
+| Réglage | Valeur | Effet |
+|---|---|---|
+| `duree` | `620` ms | Durée du vol. |
+| `taille` | `96` px | Côté de la vignette au départ. |
+| `finEchelle` | `0.18` | Taille à l'arrivée, en fraction : c'est le rétrécissement. |
+| `cambrure` | `0.3` | Hauteur de l'arc, en fraction de la distance. À 0, le plat glisse en ligne droite. |
+| `courbe` | `cubic-bezier(0.32, 0, 0.24, 1)` | Départ lent, arrivée franche. |
+
+L'apparence de la vignette est dans la règle `.vol` de `css/style.css`.
+
+Trois portes de sortie, toutes silencieuses : mouvement réduit, absence de
+photo pour la catégorie, ou navigateur sans `Element.animate`. Dans ces cas il
+ne se passe rien de plus qu'avant, l'ajout au panier restant évidemment
+effectif. Un minuteur de secours retire la vignette si l'animation ne rend
+jamais la main.
+
 ## Garde-fous transversaux
 
 - `prefers-reduced-motion` : chapitres empilés sur images fixes, pas de

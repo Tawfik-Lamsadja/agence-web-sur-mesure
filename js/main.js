@@ -1329,6 +1329,78 @@
   })();
 
   /* ===================================================================
+     8 bis. Le plat qui rejoint le panier
+
+     Prolongement du micro-delight déjà en place : l'onde qui quitte le bouton
+     et le compteur qui marque le coup restent, une vignette du plat part en
+     plus du bouton, décrit un arc et se referme sur le panier. Le geste dit
+     où l'article est allé, ce qu'un compteur qui change ne dit pas.
+
+     La vignette porte la photo de la catégorie : les plats n'ont pas d'image
+     propre. Sans photo, sans animation possible, ou en mouvement réduit, il
+     ne se passe rien de plus qu'avant.
+
+     Réglages : constante VOL.
+     =================================================================== */
+  var VOL = {
+    duree: 620,        /* durée du vol, en millisecondes */
+    taille: 96,        /* côté de la vignette au départ, en pixels */
+    finEchelle: 0.18,  /* taille à l'arrivée, en fraction de la taille */
+    cambrure: 0.3,     /* hauteur de l'arc, en fraction de la distance */
+    courbe: 'cubic-bezier(0.32, 0, 0.24, 1)'
+  };
+
+  function voleVersPanier(depuis, src) {
+    if (reduce || !src || !depuis) return;
+    /* Sans l'API d'animation, on s'abstient plutôt que de bricoler : l'onde
+       et le compteur suffisent à dire que l'ajout a eu lieu. */
+    if (typeof depuis.animate !== 'function') return;
+
+    var cible = $('#cart-open');
+    if (!cible) return;
+
+    var rd = depuis.getBoundingClientRect();
+    var rc = cible.getBoundingClientRect();
+    if (!rc.width) return; /* panier hors du champ : rien à viser */
+
+    var t = VOL.taille;
+    var x0 = rd.left + rd.width / 2 - t / 2;
+    var y0 = rd.top + rd.height / 2 - t / 2;
+    var dx = rc.left + rc.width / 2 - t / 2 - x0;
+    var dy = rc.top + rc.height / 2 - t / 2 - y0;
+
+    var vignette = document.createElement('div');
+    vignette.className = 'vol';
+    vignette.setAttribute('aria-hidden', 'true');
+    vignette.style.width = t + 'px';
+    vignette.style.height = t + 'px';
+    vignette.style.left = x0 + 'px';
+    vignette.style.top = y0 + 'px';
+    vignette.style.backgroundImage = 'url("' + src + '")';
+    document.body.appendChild(vignette);
+
+    /* Le sommet de l'arc est pris au-dessus de la corde : le plat s'élève
+       avant de retomber dans le panier, au lieu de glisser en ligne droite. */
+    var cambre = -Math.abs(dx) * VOL.cambrure;
+
+    var anim = vignette.animate([
+      { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
+      { transform: 'translate(' + (dx / 2) + 'px, ' + (dy / 2 + cambre) + 'px) scale(0.6)',
+        opacity: 1, offset: 0.55 },
+      { transform: 'translate(' + dx + 'px, ' + dy + 'px) scale(' + VOL.finEchelle + ')', opacity: 0 }
+    ], { duration: VOL.duree, easing: VOL.courbe, fill: 'forwards' });
+
+    var retire = function () {
+      if (vignette.parentNode) vignette.parentNode.removeChild(vignette);
+    };
+    anim.onfinish = retire;
+    anim.oncancel = retire;
+    /* Filet : une animation qui ne rend jamais la main ne doit pas laisser
+       la vignette collée à l'écran. */
+    setTimeout(retire, VOL.duree + 400);
+  }
+
+  /* ===================================================================
      9. Commande à emporter
      =================================================================== */
   var panier = (function () {
@@ -1432,6 +1504,9 @@
 
         var photo = figurePhoto(c.id, 'order__cat-photo');
         if (photo) bloc.appendChild(photo);
+        /* Les plats n'ont pas d'image propre : la vignette qui rejoint le
+           panier emprunte celle de leur catégorie. */
+        var srcVignette = photoCategorie(c.id);
 
         var h = document.createElement('h3');
         h.textContent = c.nom;
@@ -1483,6 +1558,8 @@
                 void add.offsetWidth;
                 add.classList.add('is-added');
               }
+              /* Et la vignette du plat s'en va rejoindre le panier. */
+              voleVersPanier(add, srcVignette);
               say(it.nom + ' ajouté au panier, ' + nb() + ' article' + (nb() > 1 ? 's' : ''));
             });
           }
