@@ -60,22 +60,15 @@ Deux replis, tous deux vérifiés au navigateur :
 - **Sans canvas ni IntersectionObserver** : la classe `sans-film` ramène la
   piste à un écran et la scène se fige sur son affiche.
 
-## 2. Pièce 3D du hero
+## 2. Le hero
 
-Constante `REGLAGES` en tête de `js/piece3d.js` :
+Aucun réglage : le hero est revenu à son état d'origine, `hero.mp4` en fond
+avec `hero-poster.jpg` comme affiche, et le mouvement de travelling
+(`kenburns`, 26 s) dans `css/style.css`.
 
-| Réglage | Valeur | Effet |
-|---|---|---|
-| `vitesseRotation` | `0.14` rad/s | Un tour complet en ~45 s. |
-| `amplitudeFlottement` | `0.05` | Hauteur du flottement vertical. |
-| `periodeFlottement` | `7` s | Durée d'une respiration. |
-| `inclinaison` | `0.1` rad | Bascule du plateau vers la caméra. |
-| `dprMax` | `1.5` | Plafond de netteté. |
-
-Position et taille du bloc : règle `.hero__piece` dans `css/style.css`
-(`right`, `top: 20svh`, `width: min(26vw, 360px)`). Masqué sous 1180 px et en
-mouvement réduit. Couleurs des matériaux et lumières : constante `C` du module,
-reprise de la palette CSS.
+La pièce 3D qui y vivait a été retirée : rendu jugé en deçà du reste du site.
+Ont disparu avec elle `js/piece3d.js`, la bibliothèque Three.js vendorisée
+(`js/vendor/`, son unique consommateur) et les règles `.hero__piece`.
 
 ## 3. Typographie cinétique
 
