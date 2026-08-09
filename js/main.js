@@ -136,309 +136,261 @@
   /* ===================================================================
      5. Le voyage du sushi
 
-     Deux modes.
+     Un seul film, cinq mouvements enchaînés, pilotés au défilement.
 
-     — Mode cinéma (navigateurs modernes, mouvement autorisé) : les chapitres
-       animés sont des séquences d'images WebP dessinées sur un <canvas>, la
-       frame étant calculée depuis la position de défilement. Aucun décodage
-       vidéo en temps réel : la technique des pages produit d'Apple. Les
-       chapitres fixes s'enchaînent en fondu.
+     Les cinq clips ont été tournés en continuité : chacun reprend la
+     dernière image du précédent. Ils forment donc un plan unique de 420
+     images, et le code les traite comme tel — une seule bande, un seul
+     canvas, un seul index global. Il n'y a pas de « chapitres » à faire
+     alterner, seulement une pellicule que le défilement déroule.
 
-     — Mode classique (repli) : l'ancien système IntersectionObserver et
-       vidéos en boucle, conservé tel quel. Il sert aussi de socle quand les
-       séquences ne sont pas encore chargées : l'affiche du chapitre reste
-       visible sous le canvas.
+     La mécanique est celle qui a été validée : séquences d'images WebP
+     extraites par ffmpeg, dessinées sur un <canvas>, frame calculée depuis
+     la position de défilement, préchargement progressif en deux passes,
+     boucle throttlée par requestAnimationFrame. Aucun décodage vidéo en
+     temps réel.
 
-     Réglages à ajuster après premier retour visuel : tout est dans CINE.
+     Le défilement est pinné : la scène est collée en haut de l'écran, plein
+     cadre, pendant toute la course de la piste. Le visiteur reste
+     visuellement au même endroit ; c'est le film qui avance sous ses yeux.
+
+     Réglages à ajuster après retour visuel : tout est dans CINE.
      =================================================================== */
   var CINE = {
-    /* Hauteur de défilement d'un chapitre animé, en écrans : plus c'est
-       grand, plus la séquence se déroule lentement sous le doigt. */
-    ecransParChapAnime: 2.2,
-    /* Hauteur d'un chapitre fixe : le temps d'un fondu et d'une lecture. */
-    ecransParChapFixe: 1.2,
-    /* Lissage exponentiel de la frame affichée (0 à 1 par image rendue).
+    /* Course totale du parcours, en hauteurs d'écran. C'est le réglage
+       maître de la vitesse : plus il est grand, plus le film se déroule
+       lentement sous le doigt. À 8 écrans pour 420 images, un écran de
+       défilement fait avancer d'environ 52 images. */
+    ecransDeCourse: 8,
+    /* Lissage exponentiel de l'image affichée (0 à 1 par image rendue).
        Plus haut = plus réactif, plus bas = plus feutré. */
-    lissage: 0.22,
+    lissage: 0.2,
     /* Démarrage du préchargement : distance de la section, en hauteurs
-       d'écran, à laquelle les séquences commencent à se charger. */
+       d'écran, à laquelle la pellicule commence à se charger. */
     margePrechargement: '150% 0px',
-    /* Passe grossière : une frame sur N chargée d'abord, pour que le
+    /* Passe grossière : une image sur N chargée d'abord, pour que le
        défilement réponde vite ; le reste suit. */
     pasGrossier: 6,
-    /* Chargements d'images simultanés. */
+    /* Chargements simultanés. */
     parallelisme: 6,
     /* Netteté du canvas : plafond de devicePixelRatio. */
     dprMax: 1.5
   };
 
+  /* La pellicule, dans l'ordre du récit. Le nombre d'images de chaque
+     mouvement est celui produit par l'extraction ffmpeg (voir ASSETS.md). */
+  var PELLICULE = [
+    { id: '00a', n: 60 },
+    { id: '00b', n: 90 },
+    { id: '00c', n: 90 },
+    { id: '00d', n: 90 },
+    { id: '00e', n: 90 }
+  ];
+
   function voyage() {
     var sec = $('[data-voyage]');
     if (!sec) return;
 
-    var chaps = $$('.chap', sec);
-    var dots  = $$('.voyage__dots button', sec);
-    var steps = $$('.voyage__steps > div', sec);
-    var stage = $('.voyage__stage', sec);
-    var actif = 0;
-    var visible = false;
+    var piste  = $('[data-piste]', sec);
+    var stage  = $('.voyage__stage', sec);
+    var canvas = $('[data-film]', sec);
+    var mouvs  = $$('.mouv', sec);
+    var dots   = $$('.voyage__dots button', sec);
 
-    function appliqueDots(i) {
+    /* Mouvement réduit : la feuille de style a déjà remplacé la piste par
+       l'image fixe et le résumé. Rien à piloter, rien à charger. */
+    if (reduce) return;
+
+    var supporteCinema = 'IntersectionObserver' in window &&
+      'requestAnimationFrame' in window &&
+      !!(canvas && canvas.getContext && canvas.getContext('2d'));
+
+    /* Sans canvas ni observateur, la piste n'a plus de raison d'être haute :
+       la scène se fige sur son affiche et le récit se lit dans le résumé. */
+    if (!supporteCinema) {
+      sec.classList.add('sans-film');
+      return;
+    }
+
+    var ctx = canvas.getContext('2d');
+
+    /* Index global : les cinq mouvements bout à bout. */
+    var TOTAL = 0;
+    var depart = PELLICULE.map(function (m) { var d = TOTAL; TOTAL += m.n; return d; });
+    var images = new Array(TOTAL);
+    var chargees = 0;
+    var prete = false;
+    var cible = 0, courante = 0, dessinee = -1;
+    var actif = -1;
+
+    /* ----- géométrie de la course ----- */
+    piste.style.height = (CINE.ecransDeCourse * 100) + 'svh';
+
+    function appliqueMouvement(i) {
+      if (i === actif) return;
+      actif = i;
+      mouvs.forEach(function (m, idx) { m.classList.toggle('is-active', idx === i); });
       dots.forEach(function (d, idx) {
         if (idx === i) d.setAttribute('aria-current', 'true');
         else d.removeAttribute('aria-current');
       });
     }
 
+    /* Le mouvement auquel appartient une image globale. */
+    function mouvementDe(index) {
+      for (var i = PELLICULE.length - 1; i >= 0; i--) {
+        if (index >= depart[i]) return i;
+      }
+      return 0;
+    }
+
+    /* ----- navigation par les repères ----- */
     dots.forEach(function (d) {
       d.addEventListener('click', function () {
         var i = parseInt(d.getAttribute('data-goto'), 10);
-        var cible = steps[i];
-        if (!cible) return;
-        var r = cible.getBoundingClientRect();
+        if (isNaN(i)) return;
+        /* Position de défilement qui place le premier plan du mouvement. */
+        var p = depart[i] / (TOTAL - 1);
+        var r = piste.getBoundingClientRect();
+        var course = piste.offsetHeight - window.innerHeight;
         window.scrollTo({
-          top: window.scrollY + r.top + r.height / 2 - window.innerHeight / 2,
-          behavior: reduce ? 'auto' : 'smooth'
+          top: window.scrollY + r.top + p * course,
+          behavior: 'smooth'
         });
       });
     });
 
-    if (reduce) {
-      /* Les chapitres sont empilés par la feuille de style : rien à piloter. */
-      chaps.forEach(function (c) { c.classList.add('is-active'); });
-      return;
+    /* ----- chargement progressif de la pellicule ----- */
+    var chargementLance = false;
+
+    function srcFrame(index) {
+      var i = mouvementDe(index);
+      var local = index - depart[i] + 1;
+      var num = String(local);
+      while (num.length < 3) num = '0' + num;
+      return 'assets/seq/' + PELLICULE[i].id + '/f' + num + '.webp';
     }
 
-    var supporteCinema = 'IntersectionObserver' in window &&
-      'requestAnimationFrame' in window &&
-      (function () {
-        var c = document.createElement('canvas');
-        return !!(c.getContext && c.getContext('2d'));
-      })();
+    function chargeTout() {
+      if (chargementLance) return;
+      chargementLance = true;
 
-    if (supporteCinema) { cinema(); return; }
-    classique();
+      /* D'abord une image sur six, du début à la fin du film : le défilement
+         répond aussitôt sur toute la course. Le reste comble ensuite. */
+      var file = [];
+      var i;
+      for (i = 0; i < TOTAL; i += CINE.pasGrossier) file.push(i);
+      for (i = 0; i < TOTAL; i++) if (i % CINE.pasGrossier !== 0) file.push(i);
 
-    /* ---------- mode classique : IO et vidéos en boucle ---------- */
-    function classique() {
-      function applique(i) {
-        actif = i;
-        chaps.forEach(function (c, idx) {
-          c.classList.toggle('is-active', idx === i);
-          var v = c.querySelector('video');
-          if (!v) return;
-          (idx === i && visible) ? joue(v) : pause(v);
-        });
-        appliqueDots(i);
+      var enCours = 0;
+      var seuil = Math.ceil(TOTAL / CINE.pasGrossier);
+
+      function suivant() {
+        while (enCours < CINE.parallelisme && file.length) charge(file.shift());
       }
-
-      if (!('IntersectionObserver' in window)) { applique(0); return; }
-
-      /* La scène joue seulement quand elle occupe l'écran. */
-      new IntersectionObserver(function (entrees) {
-        entrees.forEach(function (e) {
-          visible = e.isIntersecting;
-          if (!visible) chaps.forEach(function (c) { pause(c.querySelector('video')); });
-          else applique(actif);
-        });
-      }, { threshold: 0.2 }).observe(stage);
-
-      /* Le chapitre qui croise le milieu de l'écran prend le relais. */
-      var io = new IntersectionObserver(function (entrees) {
-        entrees.forEach(function (e) {
-          if (!e.isIntersecting) return;
-          var i = parseInt(e.target.getAttribute('data-step'), 10);
-          if (i !== actif) applique(i);
-        });
-      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
-      steps.forEach(function (s) { io.observe(s); });
-
-      applique(0);
-    }
-
-    /* ---------- mode cinéma : séquences scrutées au défilement ---------- */
-    function cinema() {
-      var pistes = chaps.map(function (chap, i) {
-        var seq = chap.getAttribute('data-seq');
-        if (!seq) return { chap: chap, anime: false };
-
-        var n = parseInt(chap.getAttribute('data-seq-n'), 10) || 0;
-        var canvas = document.createElement('canvas');
-        canvas.className = 'chap__seq';
-        canvas.setAttribute('aria-hidden', 'true');
-        chap.querySelector('.chap__media').appendChild(canvas);
-
-        return {
-          chap: chap, anime: true, seq: seq, n: n,
-          canvas: canvas, ctx: canvas.getContext('2d'),
-          images: new Array(n), chargees: 0, prete: false,
-          cible: 0, courante: 0, dessinee: -1
+      function charge(index) {
+        enCours++;
+        var img = new Image();
+        img.decoding = 'async';
+        img.onload = function () {
+          images[index] = img;
+          chargees++;
+          /* La passe grossière suffit à montrer le canvas : les trous sont
+             comblés par l'image chargée la plus proche. */
+          if (!prete && chargees >= seuil) {
+            prete = true;
+            dessinee = -1;
+            stage.classList.add('a-film');
+          }
+          enCours--;
+          suivant();
         };
-      });
-
-      /* Chaque step reçoit sa hauteur : longue pour un chapitre animé,
-         courte pour un chapitre fixe. */
-      steps.forEach(function (s, i) {
-        var scrub = s.hasAttribute('data-scrub');
-        s.style.height = (scrub ? CINE.ecransParChapAnime : CINE.ecransParChapFixe) * 100 + 'svh';
-      });
-
-      /* ----- chargement progressif des séquences ----- */
-      var chargementLance = false;
-
-      function srcFrame(piste, i) {
-        var num = String(i + 1);
-        while (num.length < 3) num = '0' + num;
-        return 'assets/seq/' + piste.seq + '/f' + num + '.webp';
+        img.onerror = function () {
+          /* Image absente : le film continue sans elle. Si rien ne charge,
+             le canvas ne s'affiche jamais et l'affiche reste en place. */
+          enCours--;
+          suivant();
+        };
+        img.src = srcFrame(index);
       }
-
-      function chargeTout() {
-        if (chargementLance) return;
-        chargementLance = true;
-
-        /* File de chargement : d'abord la passe grossière de chaque séquence
-           dans l'ordre du récit, puis les frames restantes. */
-        var file = [];
-        var animees = pistes.filter(function (p) { return p.anime; });
-        animees.forEach(function (p) {
-          for (var i = 0; i < p.n; i += CINE.pasGrossier) file.push([p, i]);
-        });
-        animees.forEach(function (p) {
-          for (var i = 0; i < p.n; i++) {
-            if (i % CINE.pasGrossier !== 0) file.push([p, i]);
-          }
-        });
-
-        var enCours = 0;
-        function suivant() {
-          while (enCours < CINE.parallelisme && file.length) {
-            var tache = file.shift();
-            charge(tache[0], tache[1]);
-          }
-        }
-        function charge(piste, i) {
-          enCours++;
-          var img = new Image();
-          img.decoding = 'async';
-          img.onload = function () {
-            piste.images[i] = img;
-            piste.chargees++;
-            /* La passe grossière suffit pour montrer le canvas : les trous
-               sont comblés par la frame chargée la plus proche. */
-            if (!piste.prete && piste.chargees >= Math.ceil(piste.n / CINE.pasGrossier)) {
-              piste.prete = true;
-              piste.dessinee = -1;
-              piste.chap.classList.add('a-seq');
-            }
-            enCours--;
-            suivant();
-          };
-          img.onerror = function () {
-            /* Frame absente : la piste continue sans elle ; si rien ne
-               charge, le canvas ne s'affiche jamais et l'affiche reste. */
-            enCours--;
-            suivant();
-          };
-          img.src = srcFrame(piste, i);
-        }
-        suivant();
-      }
-
-      new IntersectionObserver(function (entrees, io) {
-        entrees.forEach(function (e) {
-          if (!e.isIntersecting) return;
-          io.disconnect();
-          chargeTout();
-        });
-      }, { rootMargin: CINE.margePrechargement }).observe(sec);
-
-      /* ----- dimensionnement des canvas ----- */
-      function taille() {
-        var dpr = Math.min(window.devicePixelRatio || 1, CINE.dprMax);
-        var w = stage.clientWidth, h = stage.clientHeight;
-        pistes.forEach(function (p) {
-          if (!p.anime) return;
-          p.canvas.width = Math.round(w * dpr);
-          p.canvas.height = Math.round(h * dpr);
-          p.dessinee = -1; /* force un redessin à la prochaine image */
-        });
-      }
-      taille();
-      window.addEventListener('resize', taille);
-
-      /* ----- dessin d'une frame, cadrage cover ----- */
-      function dessine(piste, index) {
-        var img = piste.images[index];
-        if (!img) {
-          /* Frame pas encore là : la plus proche déjà chargée fait l'affaire. */
-          for (var d = 1; d < piste.n; d++) {
-            if (piste.images[index - d]) { img = piste.images[index - d]; break; }
-            if (piste.images[index + d]) { img = piste.images[index + d]; break; }
-          }
-        }
-        if (!img) return;
-
-        var cw = piste.canvas.width, ch = piste.canvas.height;
-        var k = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
-        var dw = img.naturalWidth * k, dh = img.naturalHeight * k;
-        piste.ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
-        piste.dessinee = index;
-      }
-
-      /* ----- boucle : position de défilement vers chapitre et frame ----- */
-      var enBoucle = false;
-
-      function boucle() {
-        if (!enBoucle) return;
-
-        var vh = window.innerHeight;
-        var ligne = vh / 2; /* le chapitre actif est celui qui croise le milieu */
-        var courant = 0;
-
-        for (var i = 0; i < steps.length; i++) {
-          var r = steps[i].getBoundingClientRect();
-          if (r.top <= ligne) courant = i;
-
-          var piste = pistes[i];
-          if (piste && piste.anime && piste.prete) {
-            /* Progression locale : de l'entrée du step sur la ligne médiane
-               jusqu'à sa sortie. La frame suit linéairement, puis un lissage
-               exponentiel amortit chaque pas. */
-            var p = (ligne - r.top) / r.height;
-            p = Math.min(1, Math.max(0, p));
-            piste.cible = p * (piste.n - 1);
-            piste.courante += (piste.cible - piste.courante) * CINE.lissage;
-            var index = Math.round(piste.courante);
-            if (index !== piste.dessinee) dessine(piste, index);
-          }
-        }
-
-        if (courant !== actif) {
-          actif = courant;
-          chaps.forEach(function (c, idx) { c.classList.toggle('is-active', idx === actif); });
-          appliqueDots(actif);
-        }
-
-        requestAnimationFrame(boucle);
-      }
-
-      /* La boucle ne tourne que quand la scène est à l'écran. */
-      new IntersectionObserver(function (entrees) {
-        entrees.forEach(function (e) {
-          visible = e.isIntersecting;
-          if (visible && !enBoucle) {
-            enBoucle = true;
-            requestAnimationFrame(boucle);
-          } else if (!visible) {
-            enBoucle = false;
-          }
-        });
-      }, { threshold: 0 }).observe(sec);
-
-      chaps[0].classList.add('is-active');
-      appliqueDots(0);
+      suivant();
     }
+
+    new IntersectionObserver(function (entrees, io) {
+      entrees.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        chargeTout();
+      });
+    }, { rootMargin: CINE.margePrechargement }).observe(sec);
+
+    /* ----- dimensionnement du canvas ----- */
+    function taille() {
+      var dpr = Math.min(window.devicePixelRatio || 1, CINE.dprMax);
+      canvas.width = Math.round((stage.clientWidth || 1) * dpr);
+      canvas.height = Math.round((stage.clientHeight || 1) * dpr);
+      dessinee = -1; /* force un redessin à la prochaine image */
+    }
+    taille();
+    window.addEventListener('resize', taille);
+
+    /* ----- dessin d'une image, cadrage cover ----- */
+    function dessine(index) {
+      var img = images[index];
+      if (!img) {
+        /* Image pas encore là : la plus proche déjà chargée fait l'affaire. */
+        for (var d = 1; d < TOTAL; d++) {
+          if (images[index - d]) { img = images[index - d]; break; }
+          if (images[index + d]) { img = images[index + d]; break; }
+        }
+      }
+      if (!img) return;
+
+      var cw = canvas.width, ch = canvas.height;
+      var k = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+      var dw = img.naturalWidth * k, dh = img.naturalHeight * k;
+      ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+      dessinee = index;
+    }
+
+    /* ----- boucle : position de défilement vers image ----- */
+    var enBoucle = false;
+
+    function boucle() {
+      if (!enBoucle) return;
+
+      /* Progression sur la course de la piste : 0 quand la scène vient de se
+         coller en haut de l'écran, 1 quand elle s'apprête à se décoller. */
+      var r = piste.getBoundingClientRect();
+      var course = piste.offsetHeight - window.innerHeight;
+      var p = course > 0 ? -r.top / course : 0;
+      p = Math.min(1, Math.max(0, p));
+
+      cible = p * (TOTAL - 1);
+      courante += (cible - courante) * CINE.lissage;
+      var index = Math.round(courante);
+
+      if (prete && index !== dessinee) dessine(index);
+      appliqueMouvement(mouvementDe(index));
+
+      requestAnimationFrame(boucle);
+    }
+
+    /* La boucle ne tourne que quand la section occupe l'écran. */
+    new IntersectionObserver(function (entrees) {
+      entrees.forEach(function (e) {
+        if (e.isIntersecting && !enBoucle) {
+          enBoucle = true;
+          requestAnimationFrame(boucle);
+        } else if (!e.isIntersecting) {
+          enBoucle = false;
+        }
+      });
+    }, { threshold: 0 }).observe(sec);
+
+    appliqueMouvement(0);
   }
+
 
   /* ===================================================================
      5 ter. Typographie cinétique du hero

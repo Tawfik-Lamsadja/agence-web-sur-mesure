@@ -423,6 +423,10 @@ p { max-width: var(--w-text); }
 }
 .voyage__intro .lede { margin-top: var(--s-3); }
 
+/* La piste : sa hauteur, posée par le script en écrans, est la course du
+   parcours. Elle ne contient qu'un enfant, collé en haut de l'écran. */
+.voyage__piste { position: relative; }
+
 .voyage__stage {
   position: sticky;
   top: 0;
@@ -430,31 +434,20 @@ p { max-width: var(--w-text); }
   z-index: 2;
   overflow: hidden;
 }
-.voyage__frame { position: absolute; inset: 0; }
 
-.chap {
+.voyage__media {
   position: absolute;
   inset: 0;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--t-slow) var(--e-soft), visibility 0s linear var(--t-slow);
-}
-.chap.is-active {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--t-slow) var(--e-soft), visibility 0s;
-}
-.chap__media {
-  position: absolute; inset: 0;
   border: 0;
 }
-.chap__media .media__el { transform: scale(1.06); transition: transform 9s linear; }
-.chap.is-active .chap__media .media__el { transform: scale(1); }
-
-/* Séquence d'images dessinée sur canvas, posée au-dessus de l'affiche.
-   Invisible tant que la passe grossière n'est pas chargée : l'affiche du
-   chapitre assure l'intérim, puis le canvas fond dessus. */
-.chap__seq {
+/* L'affiche tient la place tant que la séquence n'est pas prête ; le canvas
+   fond par-dessus dès que la passe grossière est chargée. */
+.voyage__affiche {
+  position: absolute;
+  inset: 0;
+  transform: scale(1.04);
+}
+.voyage__film {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -462,33 +455,61 @@ p { max-width: var(--w-text); }
   opacity: 0;
   transition: opacity var(--t-slow) var(--e-soft);
 }
-.chap.a-seq .chap__seq { opacity: 1; }
-.chap::after {
+.voyage__stage.a-film .voyage__film { opacity: 1; }
+
+/* Voile de lecture : le bas du cadre doit porter du texte clair. */
+.voyage__stage::after {
   content: "";
-  position: absolute; inset: 0;
-  background: linear-gradient(to top, var(--c-void) 4%, rgba(12, 8, 16, 0.62) 38%, rgba(12, 8, 16, 0.1) 70%);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(to top, var(--c-void) 3%, rgba(12, 8, 16, 0.68) 34%, rgba(12, 8, 16, 0.12) 66%),
+    linear-gradient(to right, rgba(12, 8, 16, 0.55) 0%, transparent 58%);
   pointer-events: none;
 }
-.chap__body {
+
+/* Les cinq légendes se superposent sur une seule cellule de grille :
+   une seule est lisible à la fois, et la scène ne change pas de hauteur. */
+.voyage__legendes {
   position: absolute;
   left: var(--pad-x);
   bottom: clamp(var(--s-6), 12vh, var(--s-8));
   z-index: 2;
   max-width: min(46ch, 70vw);
-  transform: translateY(24px);
-  opacity: 0;
-  transition: transform var(--t-slow) var(--e-out) 120ms, opacity var(--t-slow) var(--e-soft) 120ms;
+  display: grid;
 }
-.chap.is-active .chap__body { transform: translateY(0); opacity: 1; }
-.chap__num {
+.mouv {
+  grid-area: 1 / 1;
+  transform: translateY(20px);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform var(--t-slow) var(--e-out), opacity var(--t-slow) var(--e-soft),
+              visibility 0s linear var(--t-slow);
+}
+.mouv.is-active {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  transition: transform var(--t-slow) var(--e-out), opacity var(--t-slow) var(--e-soft), visibility 0s;
+}
+.mouv__num {
   font-size: 0.72rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--c-shu-hi);
   margin: 0 0 var(--s-2);
 }
-.chap__body .display { margin-bottom: var(--s-3); }
-.chap__body p { color: var(--c-bone-dim); margin: 0; }
+.mouv .display { margin-bottom: var(--s-3); }
+.mouv p { color: var(--c-bone-dim); margin: 0; }
+
+/* Repli mouvement réduit : masqué par défaut, révélé plus bas. */
+.voyage__fixe { display: none; }
+
+/* Repli sans canvas : la piste perd sa course, la scène tient sur un écran
+   et se fige sur son affiche. La classe est posée par le script. */
+.voyage.sans-film .voyage__piste { height: 100svh !important; }
+.voyage.sans-film .voyage__dots { display: none; }
 
 .voyage__dots {
   position: absolute;
@@ -518,9 +539,6 @@ p { max-width: var(--w-text); }
 }
 .voyage__dots button[aria-current="true"]::before { background: var(--c-shu); transform: scaleX(1); }
 .voyage__dots button:hover::before { background: var(--c-bone); }
-
-.voyage__steps { margin-top: -100svh; }
-.voyage__steps > div { height: 100svh; }
 
 /* ============================ 9. LA CARTE =============================== */
 /* ---- Grille éditoriale ----
@@ -1437,7 +1455,7 @@ p { max-width: var(--w-text); }
   .comptoir__media::after { background: linear-gradient(to top, rgba(12, 8, 16, 0.92) 10%, rgba(12, 8, 16, 0.25) 70%); }
   .comptoir__quote { top: auto; bottom: var(--s-6); transform: none; max-width: none; right: var(--pad-x); }
 
-  .chap__body { right: var(--pad-x); max-width: none; bottom: var(--s-6); }
+  .voyage__legendes { right: var(--pad-x); max-width: none; bottom: var(--s-6); }
   .voyage__dots { right: 12px; }
   .voyage__dots button { width: 26px; }
 
@@ -1659,33 +1677,40 @@ p { max-width: var(--w-text); }
   /* Pas d'objet en rotation : le script ne monte rien, la règle verrouille. */
   .hero__piece { display: none; }
 
-  /* Le voyage devient six chapitres empilés, images fixes, sans défilement piloté */
-  .voyage__stage { position: static; height: auto; overflow: visible; }
-  .voyage__frame { position: static; }
-  .voyage__steps { display: none; }
-  .voyage__dots { display: none; }
-  .chap {
-    position: relative;
-    inset: auto;
-    opacity: 1;
-    visibility: visible;
-    min-height: 70svh;
+  /* Le voyage se réduit à son aboutissement : la dernière image du parcours,
+     puis les cinq mouvements racontés en clair. Toute la mécanique pinnée
+     disparaît du document, canvas compris. Le script, de son côté, ne crée
+     ni canvas ni observateur dans ce mode. */
+  .voyage__piste { display: none; }
+
+  .voyage__fixe {
+    display: block;
+    padding: 0 var(--pad-x) var(--s-6);
+    max-width: var(--w-page);
+    margin-inline: auto;
+  }
+  .voyage__fixe-media { aspect-ratio: 16 / 10; }
+  .voyage__resume {
+    margin: var(--s-5) 0 0;
+    padding: 0;
+    list-style: none;
     display: grid;
+    gap: var(--s-3);
+    max-width: var(--w-text);
   }
-  .chap__media { position: relative; inset: auto; min-height: 46svh; }
-  .chap__media .media__el { transform: none; }
-  /* Jamais de séquence scrutée en mouvement réduit : le script ne la crée
-     pas, et cette règle garantit qu'un canvas résiduel resterait invisible. */
-  .chap__seq { display: none; }
-  .chap__body {
-    position: relative;
-    left: auto; right: auto; bottom: auto;
-    transform: none;
-    opacity: 1;
-    padding: var(--s-4) var(--pad-x) var(--s-6);
-    max-width: none;
+  .voyage__resume li {
+    padding-bottom: var(--s-3);
+    border-bottom: 1px solid var(--c-line);
+    color: var(--c-bone-dim);
+    font-size: 0.95rem;
   }
-  .chap::after { display: none; }
+  .voyage__resume strong {
+    color: var(--c-bone);
+    font-family: var(--f-display);
+    font-size: 1.25rem;
+    font-weight: 400;
+    margin-right: var(--s-1);
+  }
 
   .preloader { display: none; }
 }

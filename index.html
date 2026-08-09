@@ -124,142 +124,78 @@
     <div class="voyage__intro">
       <p class="overline">Section signature</p>
       <h2 class="display display--l">Le voyage du sushi</h2>
-      <p class="lede">Huit chapitres, une seule pièce. De la mer du Nord jusqu'à la bouche, sans coupure.</p>
+      <p class="lede">Cinq mouvements enchaînés, une seule prise. Du poisson entier jusqu'aux baguettes, sans une coupure.</p>
     </div>
 
-    <div class="voyage__stage">
-      <div class="voyage__frame">
+    <!-- La piste donne la course du parcours ; sa hauteur est posée par le
+         script, en écrans. La scène qu'elle contient reste collée à l'écran
+         du premier au dernier mouvement : c'est le film qui avance, pas la
+         page qui glisse. -->
+    <div class="voyage__piste" data-piste>
+      <div class="voyage__stage">
 
-        <!-- 01 · animé, séquence 0a -->
-        <article class="chap is-active" data-chap="0" data-seq="0a" data-seq-n="72">
-          <div class="chap__media media" data-media>
-            <video class="media__el" data-guard-video muted loop playsinline preload="none"
-                   poster="assets/voyage-0a-nage.jpg" aria-hidden="true" data-autoplay>
-              <source src="assets/voyage-0a-nage.mp4" type="video/mp4">
-            </video>
-          </div>
-          <div class="chap__body">
-            <p class="chap__num">Chapitre 01</p>
-            <h3 class="display display--m">L'eau</h3>
-            <p>Tout commence à cent vingt kilomètres de la rue de Flandre, entre deux eaux de la mer du Nord. Le poisson que vous mangerez ce soir nage encore.</p>
-          </div>
-        </article>
+        <div class="voyage__media media" data-media>
+          <!-- Affiche : ce que l'on voit tant que la séquence n'est pas prête -->
+          <img class="voyage__affiche media__el" data-guard data-affiche
+               src="assets/voyage-00a-poisson.jpg" alt="" aria-hidden="true"
+               loading="lazy" decoding="async">
+          <canvas class="voyage__film" data-film aria-hidden="true"></canvas>
+        </div>
 
-        <!-- 02 · animé, séquence 0b -->
-        <article class="chap" data-chap="1" data-seq="0b" data-seq-n="72">
-          <div class="chap__media media" data-media>
-            <video class="media__el" data-guard-video muted loop playsinline preload="none"
-                   poster="assets/voyage-0b-capture.jpg" aria-hidden="true" data-autoplay>
-              <source src="assets/voyage-0b-capture.mp4" type="video/mp4">
-            </video>
-          </div>
-          <div class="chap__body">
-            <p class="chap__num">Chapitre 02</p>
-            <h3 class="display display--m">Le filet</h3>
-            <p>Remonté de nuit, trié à la main sur le pont. Ce qui part pour Bruxelles est choisi pièce par pièce ; le reste retourne à l'eau.</p>
-          </div>
-        </article>
-
-        <!-- 03 · animé, séquence 01 -->
-        <article class="chap" data-chap="2" data-seq="01" data-seq-n="72">
-          <div class="chap__media media" data-media>
-            <video class="media__el" data-guard-video muted loop playsinline preload="none"
-                   poster="assets/voyage-01-preparation.jpg" aria-hidden="true" data-autoplay>
-              <source src="assets/voyage-01-preparation.mp4" type="video/mp4">
-            </video>
-          </div>
-          <div class="chap__body">
-            <p class="chap__num">Chapitre 03</p>
-            <h3 class="display display--m">La lame</h3>
-            <p>Trois cent quatre-vingts grammes de riz devant lui, une lame de vingt-quatre centimètres, et rien d'autre sur le plan de travail. La pièce est formée en sept secondes.</p>
-          </div>
-        </article>
-
-        <!-- 04 · fixe -->
-        <article class="chap" data-chap="3">
-          <figure class="chap__media media" data-media>
-            <img class="media__el" data-guard src="assets/voyage-02-dressage.jpg" alt="La pièce de sushi posée seule sur un plateau de laque sombre." loading="lazy" decoding="async">
-          </figure>
-          <div class="chap__body">
-            <p class="chap__num">Chapitre 04</p>
-            <h3 class="display display--m">La laque</h3>
-            <p>Posée sur le plateau, elle ne bougera plus. Le chef la tourne d'un quart de tour, puis retire sa main. C'est le dernier geste qu'il lui accorde.</p>
-          </div>
-        </article>
-
-        <!-- 05 · animé, séquence 03 -->
-        <article class="chap" data-chap="4" data-seq="03" data-seq-n="72">
-          <div class="chap__media media" data-media>
-            <video class="media__el" data-guard-video muted loop playsinline preload="none"
-                   poster="assets/voyage-03-service.jpg" aria-hidden="true" data-autoplay>
-              <source src="assets/voyage-03-service.mp4" type="video/mp4">
-            </video>
-          </div>
-          <div class="chap__body">
-            <p class="chap__num">Chapitre 05</p>
-            <h3 class="display display--m">La traversée</h3>
-            <p>Neuf mètres entre le comptoir et la table. Le plateau ne s'incline pas, le pas ne s'accélère pas. C'est la seule partie du voyage que la pièce fait sans être regardée.</p>
-          </div>
-        </article>
-
-        <!-- 06 · fixe -->
-        <article class="chap" data-chap="5">
-          <figure class="chap__media media" data-media>
-            <img class="media__el" data-guard src="assets/voyage-04-depot.jpg" alt="Le plateau déposé sur une table basse en chêne brûlé, devant un convive." loading="lazy" decoding="async">
-          </figure>
-          <div class="chap__body">
-            <p class="chap__num">Chapitre 06</p>
-            <h3 class="display display--m">Le bois</h3>
-            <p>Le plateau touche la table sans un bruit. Personne n'annonce le plat, personne n'explique : il est déjà là, et il n'attendra pas longtemps.</p>
-          </div>
-        </article>
-
-        <!-- 07 · animé, séquence 05 -->
-        <article class="chap" data-chap="6" data-seq="05" data-seq-n="72">
-          <div class="chap__media media" data-media>
-            <video class="media__el" data-guard-video muted loop playsinline preload="none"
-                   poster="assets/voyage-05-prelevement.jpg" aria-hidden="true" data-autoplay>
-              <source src="assets/voyage-05-prelevement.mp4" type="video/mp4">
-            </video>
-          </div>
-          <div class="chap__body">
-            <p class="chap__num">Chapitre 07</p>
+        <div class="voyage__legendes">
+          <article class="mouv is-active" data-mouv="0">
+            <p class="mouv__num">Mouvement 01</p>
+            <h3 class="display display--m">Le poisson</h3>
+            <p>Il arrive entier, six fois par semaine, de la criée de Zeebrugge. Cent vingt kilomètres, et rien de retiré avant le comptoir.</p>
+          </article>
+          <article class="mouv" data-mouv="1">
+            <p class="mouv__num">Mouvement 02</p>
+            <h3 class="display display--m">L'ouverture</h3>
+            <p>Le premier trait suit l'arête, du collet à la queue. Il ne se reprend pas : une lame qui hésite déchire la chair au lieu de la fendre.</p>
+          </article>
+          <article class="mouv" data-mouv="2">
+            <p class="mouv__num">Mouvement 03</p>
+            <h3 class="display display--m">Le prélèvement</h3>
+            <p>Le dos part d'un seul tenant. C'est la pièce qui tient la découpe, et elle ne quittera plus le plan de travail avant le service.</p>
+          </article>
+          <article class="mouv" data-mouv="3">
+            <p class="mouv__num">Mouvement 04</p>
+            <h3 class="display display--m">L'assemblage</h3>
+            <p>Trois cent quatre-vingts grammes de riz, une tranche, une pincée. La pièce est formée en sept secondes, puis plus personne n'y touche.</p>
+          </article>
+          <article class="mouv" data-mouv="4">
+            <p class="mouv__num">Mouvement 05</p>
             <h3 class="display display--m">La prise</h3>
-            <p>Les baguettes se glissent sous la pièce, jamais sur le dessus. Le riz reste entier, le poisson ne glisse pas. C'est à ce moment que le travail du chef se voit ou se perd.</p>
-          </div>
-        </article>
+            <p>Les baguettes se glissent dessous, jamais sur le dessus. Le riz reste entier : c'est là que le travail du chef se voit ou se perd.</p>
+          </article>
+        </div>
 
-        <!-- 08 · fixe -->
-        <article class="chap" data-chap="7">
-          <figure class="chap__media media" data-media>
-            <img class="media__el" data-guard src="assets/voyage-06-degustation.jpg" alt="La pièce portée vers la bouche, cadrage rapproché sur la main et les baguettes." loading="lazy" decoding="async">
-          </figure>
-          <div class="chap__body">
-            <p class="chap__num">Chapitre 08</p>
-            <h3 class="display display--m">La bouche</h3>
-            <p>Poisson vers le palais, riz au-dessus de la langue. Trente secondes après le comptoir, la pièce a encore la température de la main qui l'a formée.</p>
-          </div>
-        </article>
+        <ol class="voyage__dots" aria-label="Progression du voyage">
+          <li><button type="button" data-goto="0" aria-current="true"><span class="sr-only">Mouvement 01, le poisson</span></button></li>
+          <li><button type="button" data-goto="1"><span class="sr-only">Mouvement 02, l'ouverture</span></button></li>
+          <li><button type="button" data-goto="2"><span class="sr-only">Mouvement 03, le prélèvement</span></button></li>
+          <li><button type="button" data-goto="3"><span class="sr-only">Mouvement 04, l'assemblage</span></button></li>
+          <li><button type="button" data-goto="4"><span class="sr-only">Mouvement 05, la prise</span></button></li>
+        </ol>
 
       </div>
-
-      <ol class="voyage__dots" aria-label="Progression du voyage">
-        <li><button type="button" data-goto="0" aria-current="true"><span class="sr-only">Chapitre 01, l'eau</span></button></li>
-        <li><button type="button" data-goto="1"><span class="sr-only">Chapitre 02, le filet</span></button></li>
-        <li><button type="button" data-goto="2"><span class="sr-only">Chapitre 03, la lame</span></button></li>
-        <li><button type="button" data-goto="3"><span class="sr-only">Chapitre 04, la laque</span></button></li>
-        <li><button type="button" data-goto="4"><span class="sr-only">Chapitre 05, la traversée</span></button></li>
-        <li><button type="button" data-goto="5"><span class="sr-only">Chapitre 06, le bois</span></button></li>
-        <li><button type="button" data-goto="6"><span class="sr-only">Chapitre 07, la prise</span></button></li>
-        <li><button type="button" data-goto="7"><span class="sr-only">Chapitre 08, la bouche</span></button></li>
-      </ol>
     </div>
 
-    <div class="voyage__steps" aria-hidden="true">
-      <div data-step="0" data-scrub></div><div data-step="1" data-scrub></div>
-      <div data-step="2" data-scrub></div><div data-step="3"></div>
-      <div data-step="4" data-scrub></div><div data-step="5"></div>
-      <div data-step="6" data-scrub></div><div data-step="7"></div>
+    <!-- Repli mouvement réduit : la dernière image du parcours, et les cinq
+         mouvements racontés en clair. Aucun défilement piloté, aucun canvas. -->
+    <div class="voyage__fixe">
+      <figure class="voyage__fixe-media media media--wide" data-media>
+        <img class="media__el" data-guard src="assets/voyage-final-fixe.jpg"
+             alt="Le nigiri achevé, saisi aux baguettes au-dessus du plan de travail."
+             loading="lazy" decoding="async">
+      </figure>
+      <ol class="voyage__resume">
+        <li><strong>Le poisson.</strong> Il arrive entier, six fois par semaine, de la criée de Zeebrugge.</li>
+        <li><strong>L'ouverture.</strong> Le premier trait suit l'arête, du collet à la queue, et ne se reprend pas.</li>
+        <li><strong>Le prélèvement.</strong> Le dos part d'un seul tenant, et ne quitte plus le plan de travail.</li>
+        <li><strong>L'assemblage.</strong> Trois cent quatre-vingts grammes de riz, une tranche, une pincée, sept secondes.</li>
+        <li><strong>La prise.</strong> Les baguettes se glissent dessous, jamais sur le dessus.</li>
+      </ol>
     </div>
   </section>
 

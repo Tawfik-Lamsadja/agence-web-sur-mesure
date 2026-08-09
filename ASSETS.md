@@ -9,17 +9,53 @@ Direction artistique commune à tous les visuels : cinématographique, lumière
 rasante et basse, dominante prune sombre avec un unique accent vermillon,
 aucun visage net, aucun logo ni texte incrusté.
 
+## Le voyage du sushi : cinq clips enchaînés
+
+Ces cinq clips sont tournés **en continuité** : chacun reprend la dernière
+image du précédent, ce qui en fait un plan unique de 52,5 secondes. Ils sont
+fournis, pas générés depuis ce dépôt. Le site n'en lit jamais la vidéo : il
+lit les séquences d'images extraites ci-dessous.
+
 | Fichier | Type | Format | Emplacement |
 |---|---|---|---|
-| `voyage-0a-nage.mp4` | vidéo, 5 s | 1280×720, 16/9 | Voyage, chapitre 01 (repli) |
-| `voyage-0a-nage.jpg` | image | 1280×720, 16/9 | Affiche du chapitre 01, image fixe en mouvement réduit |
-| `voyage-0b-capture.mp4` | vidéo, 5 s | 1280×720, 16/9 | Voyage, chapitre 02 (repli) |
-| `voyage-0b-capture.jpg` | image | 1280×720, 16/9 | Affiche du chapitre 02, image fixe en mouvement réduit |
-| `seq/0a/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 01, scrutée au défilement |
-| `seq/0b/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 02, scrutée au défilement |
-| `seq/01/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 03, scrutée au défilement |
-| `seq/03/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 05, scrutée au défilement |
-| `seq/05/f001..f072.webp` | séquence d'images | 1280×720, WebP | Chapitre 07, scrutée au défilement |
+| `voyage-00a-poisson.mp4` | vidéo, 2,4 s | 1280×720, 16/9 | Source du mouvement 01 |
+| `voyage-00b-ouverture.mp4` | vidéo, 10 s | 1280×720, 16/9 | Source du mouvement 02 |
+| `voyage-00c-prelevement.mp4` | vidéo, 10 s | 1280×720, 16/9 | Source du mouvement 03 |
+| `voyage-00d-assemblage.mp4` | vidéo, 15 s | 1280×720, 16/9 | Source du mouvement 04 |
+| `voyage-00e-final.mp4` | vidéo, 15 s | 1280×720, 16/9 | Source du mouvement 05 |
+| `voyage-00a-poisson.jpg` | image | 1280×720, 16/9 | Affiche de la scène, visible avant chargement |
+| `voyage-final-fixe.jpg` | image | 1152×648, 16/9 | Dernière image du parcours, état en mouvement réduit |
+| `seq/00a/f001..f060.webp` | séquence | 1152 px, WebP | Mouvement 01, scruté au défilement |
+| `seq/00b/f001..f090.webp` | séquence | 1152 px, WebP | Mouvement 02 |
+| `seq/00c/f001..f090.webp` | séquence | 1152 px, WebP | Mouvement 03 |
+| `seq/00d/f001..f090.webp` | séquence | 1152 px, WebP | Mouvement 04 |
+| `seq/00e/f001..f090.webp` | séquence | 1152 px, WebP | Mouvement 05 |
+
+### Régénérer les séquences
+
+Le nombre d'images par clip est choisi entre 60 et 90 : `fps` vaut donc
+`images ÷ durée`. Toute modification du nombre d'images doit être reportée
+dans la constante `PELLICULE` de `js/main.js`.
+
+```
+ffmpeg -y -i assets/voyage-00d-assemblage.mp4 \
+       -vf "fps=5.984,scale=1152:-2" -frames:v 90 \
+       -c:v libwebp -preset photo -q:v 44 -compression_level 6 \
+       assets/seq/00d/f%03d.webp
+```
+
+L'image fixe du mouvement réduit est la dernière image du dernier mouvement :
+
+```
+ffmpeg -y -i assets/seq/00e/f090.webp -q:v 3 assets/voyage-final-fixe.jpg
+```
+
+---
+
+## Les autres visuels
+
+| Fichier | Type | Format | Emplacement |
+|---|---|---|---|
 | `hero.mp4` | vidéo, 8 à 12 s en boucle | 1920×1080, 16/9 | Fond du hero |
 | `hero-poster.jpg` | image | 1920×1080, 16/9 | Affiche du hero, visible avant lecture |
 | `maison-salle.jpg` | image | 1200×1600, 3/4 | Section « La maison » |

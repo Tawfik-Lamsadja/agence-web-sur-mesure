@@ -12,12 +12,13 @@ démonstration et qu'aucun repas n'attend son destinataire.
 
 ## Ce que la démo montre
 
-- **Le voyage du sushi** : narration en huit chapitres pilotée au défilement,
-  une seule pièce suivie de la mer du Nord jusqu'à la bouche. Cinq chapitres
-  animés en séquences d'images WebP dessinées sur canvas — la frame suit la
-  position de défilement, sans décodage vidéo en temps réel —, trois chapitres
-  sur image fixe en fondu. En repli (vieux navigateur), les vidéos muettes en
-  boucle reprennent le relais et ne jouent que lorsqu'elles sont à l'écran.
+- **Le voyage du sushi** : un plan unique de cinquante-deux secondes, découpé
+  en cinq mouvements et piloté au défilement. La scène reste collée à l'écran,
+  plein cadre, du premier au dernier mouvement : le visiteur ne bouge pas,
+  c'est le film qui avance. Techniquement, 420 images WebP dessinées sur un
+  canvas, l'image suivant la position de défilement, sans aucun décodage vidéo
+  en temps réel. Chargement progressif en deux passes, déclenché à l'approche
+  de la section.
 - **Réservation de table** : calendrier, créneaux, convives, choix de la place
   sur un plan de salle, coordonnées, acompte anti no-show de 10 € par personne
   déduit de l'addition. Six étapes, une confirmation avec référence. Les
@@ -116,8 +117,9 @@ Karla). L'API est en Node.js et n'a que deux dépendances, `@azure/functions` et
 - Toutes les couleurs sont des variables CSS déclarées en tête de feuille.
 - Un média absent est masqué par le script : l'emplacement conserve son aplat
   sombre, sans icône cassée ni texte de remplacement.
-- `prefers-reduced-motion` bascule le voyage en huit chapitres empilés, sur
-  images fixes, sans défilement piloté, sans séquence canvas ni lecture vidéo.
+- `prefers-reduced-motion` réduit le voyage à la dernière image du parcours et
+  aux cinq mouvements racontés en clair : plus de défilement piloté, plus de
+  canvas, aucune séquence chargée.
 - Cibles tactiles à 44 px minimum, focus visible, piège de focus dans les
   panneaux, fermeture au clavier, libellés annoncés aux lecteurs d'écran.
 - Testé de 375 à 1440 px, sans débordement horizontal.
