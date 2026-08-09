@@ -100,6 +100,24 @@ pour ne pas faire doublon avec le grand mot du seuil.
 En `prefers-reduced-motion`, le seuil devient un premier écran ordinaire :
 anneau entier, pas de fil, aucune fuite, et la piste retombe à un écran.
 
+## 2 bis. Le chef et les photos de catégorie
+
+Le film s'achève, le chef accueille, la carte suit. Ordre des sections :
+**voyage, chef, carte, maison, comptoir, infos.**
+
+Les six photos de catégorie sont associées dans la table `PHOTOS_CAT` de
+`js/main.js`. Elle est explicite plutôt que déduite de l'identifiant : la
+carte vit en base et peut gagner une catégorie sans que le dépôt ait la photo
+correspondante. Dans ce cas la valeur manque, aucune image n'est posée, et
+rien ne casse. Une image présente mais illisible est masquée par le même
+garde-fou que le reste du site (`gardeImage`), l'aplat prune restant en place.
+
+| Réglage | Où | Valeur | Pourquoi |
+|---|---|---|---|
+| Cadrage carte éditoriale | `.cat__photo` | `aspect-ratio: 3 / 2` | Les fichiers sont carrés, mais six carrés pleine colonne étirent la section sans fin et prennent le pas sur les listes, qui restent le sujet. |
+| Hauteur du bandeau de commande | `.order__cat-photo` | `clamp(120px, 17vh, 180px)` | On vient ici pour commander : la liste des plats doit tenir sous le nom de la catégorie. À 21/9 pleine largeur, elle passait sous la ligne de flottaison. |
+| Zoom au survol | `.cat__photo:hover` | `scale(1.04)` | Réservé aux périphériques à survol. |
+
 ## 3. Typographie cinétique
 
 Elle porte désormais sur la **ligne d'accroche du seuil**

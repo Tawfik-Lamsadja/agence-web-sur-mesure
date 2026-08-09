@@ -631,6 +631,26 @@ p { max-width: var(--w-text); }
 .voyage__dots button[aria-current="true"]::before { background: var(--c-shu); transform: scaleX(1); }
 .voyage__dots button:hover::before { background: var(--c-bone); }
 
+/* =========================== 8 bis. LE CHEF =============================
+   Il accueille à la sortie du film, juste avant la carte. Grille inverse de
+   « La maison » : le portrait tient la gauche sur cinq travées, le mot suit
+   sur six, la septième reste vide. */
+.chef {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(var(--s-5), 6vw, var(--s-8));
+  align-items: center;
+}
+.chef__media { align-self: start; }
+.chef__mot p { margin: 0 0 var(--s-3); color: var(--c-bone-dim); }
+.chef__mot .display { margin-bottom: var(--s-4); }
+.chef__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-5);
+}
+
 /* ============================ 9. LA CARTE =============================== */
 /* ---- Grille éditoriale ----
    Douze travées et une gouttière fluide. Les blocs s'y posent sur des largeurs
@@ -681,6 +701,20 @@ p { max-width: var(--w-text); }
 }
 .cat { break-inside: avoid; }
 .cat + .cat { margin-top: var(--s-6); }
+
+/* Photo signature de la catégorie, posée juste au-dessus du nom : la carte ne
+   s'ouvre plus sur du texte nu. Les fichiers sont carrés, mais six carrés
+   pleine colonne étireraient la section sans fin et prendraient le pas sur
+   les listes, qui restent le sujet. Recadrage en paysage, sujet centré. */
+.cat__photo {
+  aspect-ratio: 3 / 2;
+  margin-bottom: var(--s-3);
+}
+.cat__photo .media__el { transition: transform var(--t-slow) var(--e-soft); }
+@media (hover: hover) {
+  .cat__photo:hover .media__el { transform: scale(1.04); }
+}
+
 .cat__name {
   font-family: var(--f-display);
   font-size: clamp(1.6rem, 2.6vw, 2.3rem);
@@ -1283,6 +1317,15 @@ p { max-width: var(--w-text); }
 .order__tabs button[aria-current="true"] { color: var(--c-bone); border-color: var(--c-line-strong); }
 
 .order__cat + .order__cat { margin-top: var(--s-6); }
+
+/* Dans la feuille de commande, la photo devient un bandeau court. On vient
+   ici pour commander : la liste des plats doit tenir dans l'écran sous le
+   nom de la catégorie, pas être repoussée par l'image. */
+.order__cat-photo {
+  height: clamp(120px, 17vh, 180px);
+  margin-bottom: var(--s-3);
+}
+
 .order__cat h3 {
   font-family: var(--f-display);
   font-size: clamp(1.5rem, 2.6vw, 2.1rem);
@@ -1513,9 +1556,10 @@ p { max-width: var(--w-text); }
   /* Les grilles éditoriales se replient : une seule colonne, plus aucune
      travée vide et plus aucun décalage vertical — en pile, le décrochage ne
      produirait qu'un trou. */
-  .maison, .infos, .carte, .carte__head, .carte__grid {
+  .maison, .chef, .infos, .carte, .carte__head, .carte__grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .chef__media { aspect-ratio: 4 / 3; }
   .infos > *, .carte > *, .carte__head > *, .carte__grid > * {
     grid-column: 1 / -1;
   }

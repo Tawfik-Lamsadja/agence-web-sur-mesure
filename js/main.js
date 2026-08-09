@@ -47,12 +47,16 @@
   /* ===================================================================
      1. Garde-fous média : un fichier absent disparaît sans laisser de trace
      =================================================================== */
+  /* Une image absente s'efface au lieu d'afficher une icône cassée. Sortie de
+     gardeMedias pour servir aussi aux images créées après le démarrage. */
+  function gardeImage(img) {
+    var perdu = function () { img.classList.add('is-missing'); };
+    img.addEventListener('error', perdu);
+    if (img.complete && img.naturalWidth === 0) perdu();
+  }
+
   function gardeMedias() {
-    $$('img[data-guard]').forEach(function (img) {
-      var perdu = function () { img.classList.add('is-missing'); };
-      img.addEventListener('error', perdu);
-      if (img.complete && img.naturalWidth === 0) perdu();
-    });
+    $$('img[data-guard]').forEach(gardeImage);
 
     $$('video[data-guard-video]').forEach(function (v) {
       var perdu = function () {
@@ -648,6 +652,39 @@
   var CARTE = [];
   var PAR_ID = {};
 
+  /* Photo signature de chaque catégorie. La table est explicite plutôt que
+     déduite de l'identifiant : la carte vit en base et peut gagner une
+     catégorie sans que le dépôt ait la photo qui va avec. Dans ce cas la
+     valeur manque, aucune image n'est posée, et rien ne casse. */
+  var PHOTOS_CAT = {
+    sashimi:  'assets/menu-sashimi.jpg',
+    nigiri:   'assets/menu-nigiri.jpg',
+    rouleaux: 'assets/menu-rouleaux.jpg',
+    chauds:   'assets/menu-chauds.jpg',
+    desserts: 'assets/menu-desserts.jpg',
+    boissons: 'assets/menu-boissons.jpg'
+  };
+
+  function photoCategorie(id) { return PHOTOS_CAT[id] || ''; }
+
+  /* La photo accompagne un nom de catégorie déjà écrit juste à côté : elle
+     est décorative, son texte de remplacement reste vide. */
+  function figurePhoto(idCat, classe) {
+    var src = photoCategorie(idCat);
+    if (!src) return null;
+    var fig = document.createElement('figure');
+    fig.className = classe + ' media';
+    var img = document.createElement('img');
+    img.className = 'media__el';
+    img.src = src;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    gardeImage(img);
+    fig.appendChild(img);
+    return fig;
+  }
+
   /* La carte vit en base : elle se modifie sans repasser par le code. */
   function chargeCarte() {
     return API.get('menu').then(function (data) {
@@ -668,6 +705,9 @@
       CARTE.filter(function (c) { return c.col === col; }).forEach(function (c) {
         var bloc = document.createElement('section');
         bloc.className = 'cat';
+
+        var photo = figurePhoto(c.id, 'cat__photo');
+        if (photo) bloc.appendChild(photo);
 
         var h = document.createElement('h3');
         h.className = 'cat__name';
@@ -1389,6 +1429,9 @@
         var bloc = document.createElement('section');
         bloc.className = 'order__cat';
         bloc.id = 'cat-' + c.id;
+
+        var photo = figurePhoto(c.id, 'order__cat-photo');
+        if (photo) bloc.appendChild(photo);
 
         var h = document.createElement('h3');
         h.textContent = c.nom;
