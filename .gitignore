@@ -17,3 +17,11 @@ Thumbs.db
 
 # Visuel hors des 16 attendus par ASSETS.md, reference nulle part.
 assets/Décor.jpg
+
+# Sequences de l'ancien voyage, remplacees par seq/00a a seq/00e : plus une
+# seule ligne de code ne les lit. Conservees sur disque, hors du depot.
+assets/seq/01/
+assets/seq/03/
+assets/seq/05/
+assets/seq/0a/
+assets/seq/0b/
