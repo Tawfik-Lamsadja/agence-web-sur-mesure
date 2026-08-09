@@ -17,7 +17,8 @@ Constante `CINE` en tête de la section 5 de `js/main.js` :
 
 | Réglage | Valeur | Effet |
 |---|---|---|
-| `ecransDeCourse` | `8` | **Réglage maître de la vitesse.** Course totale du parcours en hauteurs d'écran. À 8 écrans pour 420 images, un écran de défilement avance d'environ 52 images. Plus grand = film plus lent sous le doigt, mais section plus longue à traverser. |
+| `ecransDeCourse` | `8` | **Réglage maître de la vitesse.** Course du film en hauteurs d'écran. À 8 écrans pour 420 images, un écran de défilement avance d'environ 52 images. Plus grand = film plus lent sous le doigt, mais section plus longue à traverser. |
+| `ecransDeSeuil` | `1` | Course du seuil, en écrans : le temps que le Ô se dévide et sorte du cadre. La piste mesure `ecransDeSeuil + ecransDeCourse`, soit 9 écrans. |
 | `lissage` | `0.2` | Amortissement exponentiel de l'image affichée. Plus bas = plus feutré mais plus « en retard » sur le scroll ; plus haut = plus réactif mais plus sec. |
 | `margePrechargement` | `150% 0px` | Distance à laquelle la pellicule commence à se charger. |
 | `pasGrossier` | `6` | Passe grossière : une image sur 6 chargée d'abord, sur toute la longueur du film, pour que le défilement réponde aussitôt. |
@@ -60,17 +61,52 @@ Deux replis, tous deux vérifiés au navigateur :
 - **Sans canvas ni IntersectionObserver** : la classe `sans-film` ramène la
   piste à un écran et la scène se fige sur son affiche.
 
-## 2. Le hero
+## 2. Le seuil, et le Ô qui se dévide
 
-Aucun réglage : le hero est revenu à son état d'origine, `hero.mp4` en fond
-avec `hero-poster.jpg` comme affiche, et le mouvement de travelling
-(`kenburns`, 26 s) dans `css/style.css`.
+Le premier écran du site. Ce n'est plus une section à part : il vit **dans la
+scène pinnée du voyage**, au-dessus du film, et se retire sous le défilement
+pour le découvrir. Le film attend sur sa première image pendant ce temps :
+c'est ce qui fait qu'il n'y a ni blanc ni saut au moment du relais.
 
-La pièce 3D qui y vivait a été retirée : rendu jugé en deçà du reste du site.
-Ont disparu avec elle `js/piece3d.js`, la bibliothèque Three.js vendorisée
-(`js/vendor/`, son unique consommateur) et les règles `.hero__piece`.
+Le Ô n'est pas une lettre de la police mais un anneau tracé en SVG, qui
+reprend l'ensō de la maison. Il se dévide depuis son point de trois heures,
+exactement là où naît le fil : l'encre du cercle devient celle du trait, qui
+file vers la droite et sort du cadre.
+
+Découpage dans `CINE.seuilPhases` (`js/main.js`), en fractions de la course du
+seuil. Les chevauchements sont voulus : c'est ce qui enchaîne les gestes au
+lieu de les faire se succéder par à-coups.
+
+| Phase | Bornes | Ce qui bouge |
+|---|---|---|
+| `fuite` | `0 → 0.28` | Accroche, ligne, chapô et boutons s'effacent et montent de 14 px. |
+| `deroule` | `0 → 0.55` | L'anneau se dévide, le fil se déploie sur 130 vw. |
+| `sortie` | `0.45 → 0.92` | Le mot entier file vers la droite sur 118 vw. |
+| `voile` | `0.5 → 1` | Le fond du seuil s'efface, le film et les légendes apparaissent. |
+
+Durée totale : `CINE.ecransDeSeuil` (1 écran). Pour que le Ô parte plus vite,
+baisser cette valeur ; pour étirer le geste, la monter.
+
+Le tracé lui-même est dans `index.html` (`svg.seuil__o-svg`, viewBox
+`16 0 98 132`, anneau `r=42` centré en `65,80`). Le périmètre du dévidage est
+mesuré au chargement par `getTotalLength()` plutôt que calculé, pour que
+l'encre s'épuise exactement à la fin. Le fil est ancré à `left: 92.5%` de la
+boîte du Ô, soit son point de trois heures : **si le viewBox change, cet
+ancrage doit changer avec.**
+
+Le mot du bandeau de navigation ne s'affiche qu'une fois le bandeau accroché,
+pour ne pas faire doublon avec le grand mot du seuil.
+
+En `prefers-reduced-motion`, le seuil devient un premier écran ordinaire :
+anneau entier, pas de fil, aucune fuite, et la piste retombe à un écran.
 
 ## 3. Typographie cinétique
+
+Elle porte désormais sur la **ligne d'accroche du seuil**
+(« Vingt-deux couverts, un comptoir, une pièce à la fois. ») et non sur le mot
+lui-même : le Ô est un tracé qui se dévide, on ne le découpe pas en lettres.
+Les lettres sont regroupées par mot (`.kin-mot`), sans quoi le navigateur
+coupe volontiers au milieu d'un mot.
 
 Constante `KIN` dans `js/main.js` (section 5 ter) :
 

@@ -34,7 +34,7 @@
   <p class="preloader__word">Ô'resto</p>
 </div>
 
-<a class="skip-link" href="#maison">Aller au contenu</a>
+<a class="skip-link" href="#voyage">Aller au contenu</a>
 
 <div class="jauge" aria-hidden="true"></div>
 
@@ -47,8 +47,8 @@
   </a>
 
   <nav class="head__nav" aria-label="Navigation principale">
-    <a href="#maison">La maison</a>
     <a href="#voyage">Le voyage</a>
+    <a href="#maison">La maison</a>
     <a href="#carte">La carte</a>
     <a href="#infos">Nous trouver</a>
   </nav>
@@ -64,63 +64,9 @@
 
 <main id="top">
 
-  <!-- ==================== HERO ==================== -->
-  <section class="hero">
-    <div class="hero__media media" data-media>
-      <video class="media__el" data-guard-video muted loop playsinline preload="metadata"
-             poster="assets/hero-poster.jpg" aria-hidden="true" data-autoplay>
-        <source src="assets/hero.mp4" type="video/mp4">
-      </video>
-    </div>
-    <div class="hero__veil" aria-hidden="true"></div>
-
-    <div class="hero__body">
-      <p class="overline">Rue de Flandre, Bruxelles</p>
-      <h1 class="display display--xl">Vingt-deux couverts,<br>un comptoir,<br><em>une pièce à la fois.</em></h1>
-      <p class="lede">Le riz est assaisonné toutes les deux heures, jamais à l'avance. Le poisson arrive six fois par semaine de la criée de Zeebrugge, à cent vingt kilomètres.</p>
-      <div class="hero__cta">
-        <button type="button" class="btn btn--solid btn--lg" data-open="reserver">Réserver une table</button>
-        <button type="button" class="btn btn--outline btn--lg" data-open="commander">Commander à emporter</button>
-      </div>
-    </div>
-
-    <a class="hero__cue" href="#maison" aria-label="Descendre vers la suite">
-      <span class="hero__cue-line" aria-hidden="true"></span>
-      <span class="hero__cue-word">Mardi au samedi, 12h00 et 18h30</span>
-    </a>
-  </section>
-
-  <!-- ==================== LA MAISON ==================== -->
-  <section class="maison section" id="maison">
-    <figure class="maison__media media media--tall" data-media>
-      <img class="media__el" data-guard src="assets/maison-salle.jpg" alt="La salle de Ô'resto vue depuis l'entrée, trois tables basses et le comptoir en fond." loading="lazy" decoding="async">
-    </figure>
-
-    <div class="maison__text">
-      <p class="overline">La maison</p>
-      <h2 class="display display--l">Une salle qui tient dans un regard</h2>
-      <p>Huit places au comptoir, face au chef. Quatorze en salle, sur trois tables basses en chêne brûlé. Rien n'est caché : la découpe, le riz, le dressage se font devant vous, à un mètre.</p>
-      <p>Le soir, la maison ne fait qu'un seul tour. Votre table vous appartient de 18h30 jusqu'à la fermeture, sans qu'on vienne vous demander de libérer la place.</p>
-
-      <dl class="facts">
-        <div><dt>Couverts</dt><dd>22, dont 8 au comptoir</dd></div>
-        <div><dt>Services</dt><dd>Un seul le soir, deux le midi</dd></div>
-        <div><dt>Poisson</dt><dd>Zeebrugge, six livraisons par semaine</dd></div>
-      </dl>
-    </div>
-  </section>
-
-  <div class="rule" aria-hidden="true">
-    <svg class="enso enso--rule" viewBox="0 0 240 240" focusable="false"><use href="#ensoShape"></use></svg>
-  </div>
-
-  <!-- ==================== LE VOYAGE DU SUSHI ==================== -->
+  <!-- ==================== LE VOYAGE DU SUSHI ====================
+       Première chose visible au chargement : le seuil, puis le film. -->
   <section class="voyage" id="voyage" data-voyage>
-    <div class="voyage__intro">
-      <p class="overline">Section signature</p>
-      <h2 class="display display--l">Le voyage du sushi</h2>
-      <p class="lede">Cinq mouvements enchaînés, une seule prise. Du poisson entier jusqu'aux baguettes, sans une coupure.</p>
-    </div>
 
     <!-- La piste donne la course du parcours ; sa hauteur est posée par le
          script, en écrans. La scène qu'elle contient reste collée à l'écran
@@ -173,6 +119,49 @@
           <li><button type="button" data-goto="4"><span class="sr-only">Mouvement 05, la prise</span></button></li>
         </ol>
 
+        <!-- ---------- Le seuil ----------
+             Le premier écran. Dès les premiers pixels de défilement, l'anneau
+             du Ô se dévide en un fil qui file vers la droite et sort du cadre,
+             pendant que le reste du mot et les appels à l'action s'effacent.
+             Le film est déjà là, dessous : il n'y a ni blanc ni coupure, juste
+             un voile qui se lève. -->
+        <div class="seuil" data-seuil>
+          <div class="seuil__media media" data-media>
+            <video class="media__el" data-guard-video muted loop playsinline preload="metadata"
+                   poster="assets/hero-poster.jpg" aria-hidden="true" data-autoplay>
+              <source src="assets/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <div class="seuil__veil" aria-hidden="true"></div>
+
+          <div class="seuil__corps">
+            <p class="overline seuil__fuit">Rue de Flandre, Bruxelles</p>
+
+            <h1 class="seuil__mot" aria-label="Ô'resto">
+              <span class="seuil__o" aria-hidden="true">
+                <svg class="seuil__o-svg" viewBox="16 0 98 132" focusable="false">
+                  <path class="seuil__o-accent" d="M43 34 L65 13 L87 34"></path>
+                  <circle class="seuil__o-anneau" cx="65" cy="80" r="42"></circle>
+                </svg>
+                <span class="seuil__fil"></span>
+              </span><span class="seuil__reste" aria-hidden="true">'resto</span>
+            </h1>
+
+            <p class="seuil__ligne seuil__fuit"><em>Vingt-deux couverts, un comptoir, une pièce à la fois.</em></p>
+            <p class="lede seuil__fuit">Le riz est assaisonné toutes les deux heures, jamais à l'avance. Le poisson arrive six fois par semaine de la criée de Zeebrugge, à cent vingt kilomètres.</p>
+
+            <div class="seuil__cta seuil__fuit">
+              <button type="button" class="btn btn--solid btn--lg" data-open="reserver">Réserver une table</button>
+              <button type="button" class="btn btn--outline btn--lg" data-open="commander">Commander à emporter</button>
+            </div>
+          </div>
+
+          <p class="seuil__cue seuil__fuit" aria-hidden="true">
+            <span class="seuil__cue-line"></span>
+            <span class="seuil__cue-word">Mardi au samedi, 12h00 et 18h30</span>
+          </p>
+        </div>
+
       </div>
     </div>
 
@@ -191,6 +180,30 @@
         <li><strong>L'assemblage.</strong> Trois cent quatre-vingts grammes de riz, une tranche, une pincée, sept secondes.</li>
         <li><strong>La prise.</strong> Les baguettes se glissent dessous, jamais sur le dessus.</li>
       </ol>
+    </div>
+  </section>
+
+  <div class="rule" aria-hidden="true">
+    <svg class="enso enso--rule" viewBox="0 0 240 240" focusable="false"><use href="#ensoShape"></use></svg>
+  </div>
+
+  <!-- ==================== LA MAISON ==================== -->
+  <section class="maison section" id="maison">
+    <figure class="maison__media media media--tall" data-media>
+      <img class="media__el" data-guard src="assets/maison-salle.jpg" alt="La salle de Ô'resto vue depuis l'entrée, trois tables basses et le comptoir en fond." loading="lazy" decoding="async">
+    </figure>
+
+    <div class="maison__text">
+      <p class="overline">La maison</p>
+      <h2 class="display display--l">Une salle qui tient dans un regard</h2>
+      <p>Huit places au comptoir, face au chef. Quatorze en salle, sur trois tables basses en chêne brûlé. Rien n'est caché : la découpe, le riz, le dressage se font devant vous, à un mètre.</p>
+      <p>Le soir, la maison ne fait qu'un seul tour. Votre table vous appartient de 18h30 jusqu'à la fermeture, sans qu'on vienne vous demander de libérer la place.</p>
+
+      <dl class="facts">
+        <div><dt>Couverts</dt><dd>22, dont 8 au comptoir</dd></div>
+        <div><dt>Services</dt><dd>Un seul le soir, deux le midi</dd></div>
+        <div><dt>Poisson</dt><dd>Zeebrugge, six livraisons par semaine</dd></div>
+      </dl>
     </div>
   </section>
 

@@ -168,6 +168,8 @@ a:hover { color: var(--c-mauve); }
   transform-origin: 50% 92%;
   will-change: transform;
 }
+/* Le mot reste solidaire : la césure ne peut tomber qu'entre deux mots. */
+.kin-mot { display: inline-block; white-space: nowrap; }
 .display--l  { font-size: clamp(2.2rem, 5vw, 4.1rem); }
 .display--m  { font-size: clamp(1.7rem, 3.4vw, 2.9rem); }
 .display--s  { font-size: clamp(1.4rem, 2.4vw, 2rem); }
@@ -306,56 +308,153 @@ p { max-width: var(--w-text); }
 .head.is-open .burger span:first-child { transform: translateY(3px) rotate(45deg); }
 .head.is-open .burger span:last-child  { transform: translateY(-3px) rotate(-45deg); }
 
-/* ============================== 6. HERO ================================= */
-.hero {
-  position: relative;
-  min-height: 100svh;
+/* ============================== 6. SEUIL ================================
+   Le premier écran du site, posé sur la scène du voyage. Il n'est pas une
+   section à part : il vit dans la scène pinnée, au-dessus du film, et se
+   retire sous le défilement pour découvrir celui-ci.
+
+   Quatre variables, toutes posées par main.js sur la scène, chacune de 0 à 1 :
+     --o-deroule    l'anneau du Ô se dévide, le fil se déploie
+     --o-sortie     le mot entier file vers la droite et quitte le cadre
+     --seuil-fuite  le texte et les boutons s'effacent
+     --seuil-voile  le fond du seuil s'efface, le film apparaît dessous
+   Leurs valeurs par défaut décrivent l'état au repos : rien n'a bougé. */
+.voyage__stage {
+  --o-deroule: 0;
+  --o-sortie: 0;
+  --seuil-fuite: 0;
+  --seuil-voile: 0;
+}
+
+.seuil {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
   display: grid;
   align-items: end;
   padding: var(--s-9) var(--pad-x) var(--s-6);
   overflow: hidden;
   isolation: isolate;
+  opacity: calc(1 - var(--seuil-voile));
 }
-.hero__media {
+/* Passé le seuil, plus rien ne doit intercepter le curseur ni le clavier. */
+.seuil.est-passe { visibility: hidden; pointer-events: none; }
+
+.seuil__media {
   position: absolute; inset: 0;
   z-index: -2;
   border: 0;
 }
-.hero__media .media__el { animation: kenburns 26s var(--e-soft) infinite alternate; }
+.seuil__media .media__el { animation: kenburns 26s var(--e-soft) infinite alternate; }
 @keyframes kenburns {
   from { transform: scale(1.02); }
   to   { transform: scale(1.11); }
 }
-.hero__veil {
+.seuil__veil {
   position: absolute; inset: 0;
   z-index: -1;
   background:
     linear-gradient(to top, var(--c-void) 2%, rgba(12, 8, 16, 0.55) 42%, rgba(12, 8, 16, 0.25) 72%, rgba(12, 8, 16, 0.6) 100%),
     linear-gradient(to right, rgba(12, 8, 16, 0.8) 0%, transparent 62%);
 }
-.hero__body { max-width: min(900px, 76vw); }
-.hero .lede { margin: var(--s-4) 0 var(--s-5); max-width: 46ch; }
-.hero__cta { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.seuil__corps { max-width: min(900px, 76vw); }
 
-.hero__cue {
+/* Tout ce qui s'efface simplement : l'accroche, le chapô, les boutons. */
+.seuil__fuit {
+  opacity: calc(1 - var(--seuil-fuite));
+  transform: translateY(calc(var(--seuil-fuite) * -14px));
+}
+
+/* ---- Le mot, et le Ô qui se dévide ---- */
+.seuil__mot {
+  display: flex;
+  align-items: center;
+  margin: var(--s-3) 0 var(--s-4);
+  font-family: var(--f-display);
+  font-weight: 300;
+  font-size: clamp(3.4rem, 10vw, 9rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  transform: translateX(calc(var(--o-sortie) * 118vw));
+}
+
+.seuil__o {
+  position: relative;
+  display: inline-block;
+  width: 0.82em;
+  flex: none;
+}
+.seuil__o-svg { width: 100%; height: auto; overflow: visible; }
+
+/* L'anneau se dévide depuis son point de trois heures, exactement là où le
+   fil prend naissance : l'encre du cercle devient celle du trait. */
+.seuil__o-anneau {
+  fill: none;
+  stroke: var(--c-bone);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-dasharray: var(--o-perimetre, 264);
+  stroke-dashoffset: calc(var(--o-perimetre, 264) * var(--o-deroule));
+}
+.seuil__o-accent {
+  fill: none;
+  stroke: var(--c-bone);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: calc(1 - var(--o-deroule) * 2.6);
+}
+
+/* Le fil : ancré au point de trois heures de l'anneau, il se déploie vers la
+   droite au fur et à mesure que celui-ci se dévide. Le cadre de la scène le
+   coupe au bord de l'écran, ce qui suffit à le faire sortir. */
+.seuil__fil {
+  position: absolute;
+  left: 92.5%;
+  top: 60.6%;
+  width: 130vw;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--c-bone) 0%, var(--c-shu-hi) 22%, var(--c-shu) 100%);
+  transform-origin: 0 50%;
+  transform: scaleX(var(--o-deroule));
+}
+
+.seuil__reste { opacity: calc(1 - var(--seuil-fuite) * 1.4); }
+
+.seuil__ligne {
+  margin: 0 0 var(--s-4);
+  font-family: var(--f-display);
+  font-size: clamp(1.5rem, 3vw, 2.6rem);
+  line-height: 1.1;
+  color: var(--c-bone);
+  max-width: 22ch;
+}
+.seuil__ligne em { font-style: italic; color: var(--c-mauve); }
+
+.seuil .lede { margin: 0 0 var(--s-5); max-width: 46ch; }
+.seuil__cta { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+.seuil__cue {
   position: absolute;
   right: var(--pad-x);
   bottom: var(--s-6);
+  margin: 0;
   display: flex;
   align-items: center;
   gap: var(--s-2);
-  text-decoration: none;
   color: var(--c-bone-dim);
   font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
-.hero__cue-line {
+.seuil__cue-line {
   width: 56px; height: 1px;
   background: var(--c-line-strong);
   position: relative; overflow: hidden;
 }
-.hero__cue-line::after {
+.seuil__cue-line::after {
   content: ""; position: absolute; inset: 0;
   background: var(--c-shu);
   transform: translateX(-100%);
@@ -366,6 +465,11 @@ p { max-width: var(--w-text); }
   55%  { transform: translateX(0); }
   100% { transform: translateX(100%); }
 }
+
+/* Le mot du bandeau ferait doublon avec celui du seuil : il n'apparaît qu'une
+   fois le bandeau accroché, c'est-à-dire dès les premiers pixels de course. */
+.brand { transition: opacity var(--t-mid) var(--e-soft); }
+.head:not(.is-stuck) .brand { opacity: 0; pointer-events: none; }
 
 /* =========================== 7. LA MAISON =============================== */
 .maison {
@@ -407,8 +511,9 @@ p { max-width: var(--w-text); }
 .voyage__intro .lede { margin-top: var(--s-3); }
 
 /* La piste : sa hauteur, posée par le script en écrans, est la course du
-   parcours. Elle ne contient qu'un enfant, collé en haut de l'écran. */
-.voyage__piste { position: relative; }
+   parcours. Elle ne contient qu'un enfant, collé en haut de l'écran. La
+   hauteur plancher évite une scène écrasée si le script ne tourne pas. */
+.voyage__piste { position: relative; min-height: 100svh; }
 
 .voyage__stage {
   position: sticky;
@@ -453,7 +558,8 @@ p { max-width: var(--w-text); }
 }
 
 /* Les cinq légendes se superposent sur une seule cellule de grille :
-   une seule est lisible à la fois, et la scène ne change pas de hauteur. */
+   une seule est lisible à la fois, et la scène ne change pas de hauteur.
+   Elles ne se découvrent qu'à mesure que le seuil s'efface. */
 .voyage__legendes {
   position: absolute;
   left: var(--pad-x);
@@ -461,6 +567,7 @@ p { max-width: var(--w-text); }
   z-index: 2;
   max-width: min(46ch, 70vw);
   display: grid;
+  opacity: var(--seuil-voile, 1);
 }
 .mouv {
   grid-area: 1 / 1;
@@ -504,6 +611,7 @@ p { max-width: var(--w-text); }
   margin: 0; padding: 0;
   display: grid;
   gap: var(--s-2);
+  opacity: var(--seuil-voile, 1);
 }
 .voyage__dots button {
   display: block;
@@ -1395,10 +1503,12 @@ p { max-width: var(--w-text); }
   .head.is-open .head__actions .btn--ghost { border-color: var(--c-line-strong); color: var(--c-bone); }
   .head.is-open .burger { position: absolute; right: var(--pad-x); top: var(--s-2); }
 
-  .hero { align-items: end; padding-top: var(--s-8); }
-  .hero__body { max-width: none; }
-  .hero__cue { display: none; }
-  .hero__cta .btn { flex: 1 1 auto; }
+  .seuil { padding-top: var(--s-8); }
+  .seuil__corps { max-width: none; }
+  .seuil__cue { display: none; }
+  .seuil__cta .btn { flex: 1 1 auto; }
+  /* Le chapô mange l'écran sur un mobile : le mot et la ligne suffisent. */
+  .seuil .lede { display: none; }
 
   /* Les grilles éditoriales se replient : une seule colonne, plus aucune
      travée vide et plus aucun décalage vertical — en pile, le décrochage ne
@@ -1651,14 +1761,32 @@ p { max-width: var(--w-text); }
     transition: none !important;
   }
 
-  .hero__media .media__el { animation: none; transform: none; }
-  .hero__cue-line::after { display: none; }
+  .seuil__media .media__el { animation: none; transform: none; }
+  .seuil__cue-line::after { display: none; }
 
-  /* Le voyage se réduit à son aboutissement : la dernière image du parcours,
-     puis les cinq mouvements racontés en clair. Toute la mécanique pinnée
-     disparaît du document, canvas compris. Le script, de son côté, ne crée
-     ni canvas ni observateur dans ce mode. */
-  .voyage__piste { display: none; }
+  /* Le voyage se réduit à son aboutissement : le seuil reste un premier écran
+     ordinaire, l'anneau du Ô ne se dévide pas, puis viennent la dernière image
+     du parcours et les cinq mouvements racontés en clair. La mécanique pinnée
+     sort du document, canvas compris. Le script, de son côté, ne pose aucune
+     variable et ne charge aucune séquence dans ce mode. */
+  .voyage__piste { height: auto !important; min-height: 0; }
+  .voyage__stage { position: static; height: auto; overflow: visible; }
+  .voyage__media, .voyage__legendes, .voyage__dots { display: none; }
+  .voyage__stage::after { display: none; }
+
+  .seuil {
+    position: relative;
+    inset: auto;
+    min-height: 100svh;
+    opacity: 1;
+  }
+  /* Ni dévidage ni fuite : le mot reste entier et lisible. */
+  .seuil__fil { display: none; }
+  .seuil__mot { transform: none; }
+  .seuil__fuit { opacity: 1; transform: none; }
+  .seuil__reste { opacity: 1; }
+  .seuil__o-anneau { stroke-dashoffset: 0; }
+  .seuil__o-accent { opacity: 1; }
 
   .voyage__fixe {
     display: block;

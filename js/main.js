@@ -125,7 +125,7 @@
   function pause(v) { if (v && !v.paused) v.pause(); }
 
   function heroVideo() {
-    var v = $('.hero__media video[data-autoplay]');
+    var v = $('.seuil__media video[data-autoplay]');
     if (!v || reduce) return;
     if (!('IntersectionObserver' in window)) { joue(v); return; }
     new IntersectionObserver(function (entrees) {
@@ -162,6 +162,19 @@
        lentement sous le doigt. À 8 écrans pour 420 images, un écran de
        défilement fait avancer d'environ 52 images. */
     ecransDeCourse: 8,
+    /* Course du seuil, en hauteurs d'écran : le temps que le Ô se dévide et
+       quitte le cadre. Court volontairement — le film doit prendre la main
+       vite. La piste mesure donc `ecransDeSeuil + ecransDeCourse` écrans. */
+    ecransDeSeuil: 1,
+    /* Découpage du seuil, en fractions de sa propre course. Chaque paire est
+       un début et une fin ; les chevauchements sont voulus, c'est ce qui
+       enchaîne les gestes sans les faire se succéder par à-coups. */
+    seuilPhases: {
+      fuite:   [0, 0.28],    /* accroche, ligne, chapô et boutons s'effacent */
+      deroule: [0, 0.55],    /* l'anneau se dévide, le fil se déploie */
+      sortie:  [0.45, 0.92], /* le mot file vers la droite et sort du cadre */
+      voile:   [0.5, 1]      /* le fond du seuil s'efface, le film apparaît */
+    },
     /* Lissage exponentiel de l'image affichée (0 à 1 par image rendue).
        Plus haut = plus réactif, plus bas = plus feutré. */
     lissage: 0.2,
@@ -196,6 +209,7 @@
     var canvas = $('[data-film]', sec);
     var mouvs  = $$('.mouv', sec);
     var dots   = $$('.voyage__dots button', sec);
+    var seuil  = $('[data-seuil]', sec);
 
     /* Mouvement réduit : la feuille de style a déjà remplacé la piste par
        l'image fixe et le résumé. Rien à piloter, rien à charger. */
@@ -223,8 +237,41 @@
     var cible = 0, courante = 0, dessinee = -1;
     var actif = -1;
 
-    /* ----- géométrie de la course ----- */
-    piste.style.height = (CINE.ecransDeCourse * 100) + 'svh';
+    /* ----- géométrie de la course -----
+       La piste porte le seuil puis le film. La fraction ci-dessous est la
+       part de la course qui revient au seuil ; au-delà, le film déroule. */
+    var ecransTotal = CINE.ecransDeSeuil + CINE.ecransDeCourse;
+    var partSeuil = CINE.ecransDeSeuil / ecransTotal;
+    piste.style.height = (ecransTotal * 100) + 'svh';
+
+    /* ----- le seuil -----
+       Une phase donne sa progression propre, de 0 à 1, à partir de la
+       progression du seuil. */
+    function phase(t, bornes) {
+      return Math.min(1, Math.max(0, (t - bornes[0]) / (bornes[1] - bornes[0])));
+    }
+
+    var seuilPose = -1;
+
+    function appliqueSeuil(t) {
+      if (!seuil || t === seuilPose) return;
+      seuilPose = t;
+      var p = CINE.seuilPhases;
+      var s = stage.style;
+      s.setProperty('--seuil-fuite', phase(t, p.fuite).toFixed(4));
+      s.setProperty('--o-deroule', phase(t, p.deroule).toFixed(4));
+      s.setProperty('--o-sortie', phase(t, p.sortie).toFixed(4));
+      s.setProperty('--seuil-voile', phase(t, p.voile).toFixed(4));
+      /* Passé le seuil, il sort du champ du curseur et du clavier. */
+      seuil.classList.toggle('est-passe', t >= 1);
+    }
+
+    /* Le périmètre exact de l'anneau, mesuré sur le tracé plutôt que calculé :
+       le dévidage doit s'arrêter pile quand l'encre est épuisée. */
+    var anneau = seuil && $('.seuil__o-anneau', seuil);
+    if (anneau && anneau.getTotalLength) {
+      stage.style.setProperty('--o-perimetre', anneau.getTotalLength().toFixed(1));
+    }
 
     function appliqueMouvement(i) {
       if (i === actif) return;
@@ -249,8 +296,9 @@
       d.addEventListener('click', function () {
         var i = parseInt(d.getAttribute('data-goto'), 10);
         if (isNaN(i)) return;
-        /* Position de défilement qui place le premier plan du mouvement. */
-        var p = depart[i] / (TOTAL - 1);
+        /* Position de défilement qui place le premier plan du mouvement,
+           le seuil étant déjà derrière nous. */
+        var p = partSeuil + (1 - partSeuil) * (depart[i] / (TOTAL - 1));
         var r = piste.getBoundingClientRect();
         var course = piste.offsetHeight - window.innerHeight;
         window.scrollTo({
@@ -366,7 +414,19 @@
       var p = course > 0 ? -r.top / course : 0;
       p = Math.min(1, Math.max(0, p));
 
-      cible = p * (TOTAL - 1);
+      /* La course se partage : le seuil d'abord, le film ensuite. Tant que le
+         seuil n'est pas franchi, le film attend sur sa première image — c'est
+         ce qui fait que le relais se prend sans blanc ni saut. */
+      var pFilm;
+      if (p < partSeuil) {
+        appliqueSeuil(p / partSeuil);
+        pFilm = 0;
+      } else {
+        appliqueSeuil(1);
+        pFilm = (p - partSeuil) / (1 - partSeuil);
+      }
+
+      cible = pFilm * (TOTAL - 1);
       courante += (cible - courante) * CINE.lissage;
       var index = Math.round(courante);
 
@@ -389,6 +449,7 @@
     }, { threshold: 0 }).observe(sec);
 
     appliqueMouvement(0);
+    appliqueSeuil(0);
   }
 
 
@@ -415,8 +476,10 @@
     if (!window.matchMedia('(pointer: fine)').matches) return;
     if (!('requestAnimationFrame' in window)) return;
 
-    var hero = $('.hero');
-    var titre = hero && hero.querySelector('h1.display');
+    /* La ligne d'accroche du seuil, et non le mot lui-même : le Ô est un
+       tracé qui se dévide au défilement, on ne le découpe pas en lettres. */
+    var zone = $('.seuil');
+    var titre = zone && $('.seuil__ligne', zone);
     if (!titre) return;
 
     /* L'intitulé lisible d'abord, le découpage ensuite. Les <br> deviennent
@@ -431,18 +494,27 @@
     })(titre);
     titre.setAttribute('aria-label', brut.join('').replace(/\s+/g, ' ').trim());
 
+    /* Chaque lettre reçoit sa boîte, mais les lettres d'un même mot sont
+       regroupées : sans cela, chaque boîte devient un point de rupture et le
+       navigateur coupe volontiers au milieu d'un mot. */
     var lettres = [];
     (function decoupe(n) {
       Array.prototype.slice.call(n.childNodes).forEach(function (e) {
         if (e.nodeType === 3) {
           var frag = document.createDocumentFragment();
-          e.textContent.split('').forEach(function (ch) {
-            if (/\s/.test(ch)) { frag.appendChild(document.createTextNode(ch)); return; }
-            var s = document.createElement('span');
-            s.className = 'kin';
-            s.textContent = ch;
-            frag.appendChild(s);
-            lettres.push({ el: s, val: 0, cible: 0 });
+          e.textContent.split(/(\s+)/).forEach(function (bout) {
+            if (bout === '') return;
+            if (/^\s+$/.test(bout)) { frag.appendChild(document.createTextNode(bout)); return; }
+            var mot = document.createElement('span');
+            mot.className = 'kin-mot';
+            bout.split('').forEach(function (ch) {
+              var s = document.createElement('span');
+              s.className = 'kin';
+              s.textContent = ch;
+              mot.appendChild(s);
+              lettres.push({ el: s, val: 0, cible: 0 });
+            });
+            frag.appendChild(mot);
           });
           n.replaceChild(frag, e);
         } else if (e.nodeName !== 'BR') {
@@ -483,13 +555,13 @@
       if (!enBoucle) { enBoucle = true; requestAnimationFrame(pas); }
     }
 
-    hero.addEventListener('pointermove', function (e) {
+    zone.addEventListener('pointermove', function (e) {
       if (e.pointerType && e.pointerType !== 'mouse') return;
       sx = e.clientX; sy = e.clientY;
       dedans = true;
       reveille();
     });
-    hero.addEventListener('pointerleave', function () {
+    zone.addEventListener('pointerleave', function () {
       dedans = false;
       reveille();
     });
