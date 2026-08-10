@@ -25,6 +25,13 @@ démonstration et qu'aucun repas n'attend son destinataire.
   créneaux et les places affichés sont ceux qui restent réellement libres.
 - **Commande à emporter** : carte, ajout au panier, tiroir coulissant, choix de
   l'heure de retrait, coordonnées, récapitulatif et validation.
+- **Commande à table par code QR** : le code posé sur la table ouvre la carte
+  avec la table déjà reconnue. Ce qui disparaît alors est aussi parlant que ce
+  qui reste : plus d'heure de retrait, plus de coordonnées, plus de promesse
+  d'e-mail. Un seul bouton, « Envoyer à table 3 ». Le ramen, qui ne quitte pas
+  la maison, redevient commandable puisqu'on y est.
+- **Back-office** : sur `/admin`, le restaurateur modifie sa carte et voit
+  arriver les commandes à table pendant le service.
 
 Les deux parcours sont indépendants, atteignables par deux boutons distincts
 dans l'en-tête, et adressables directement par `#reserver` et `#commander`.
@@ -90,10 +97,19 @@ Deux conséquences de ce modèle méritent d'être connues :
 | `GET /api/availability?date=AAAA-MM-JJ` | Créneaux et tables réellement libres ce jour-là |
 | `POST /api/reservations` | Enregistre une réservation, envoie la confirmation |
 | `POST /api/orders` | Enregistre une commande à emporter, envoie la confirmation |
+| `GET /api/table?id=…&cle=…` | Nomme la table d'un code QR, refuse un lien forgé |
 | `POST /api/admin/session` | Vérifie le mot de passe du back-office, délivre un jeton |
 | `GET /api/admin/carte` | La carte telle qu'on l'édite, jeton exigé |
 | `POST /api/admin/plat` | Ajoute ou modifie un plat, jeton exigé |
 | `DELETE /api/admin/plat` | Retire un plat, jeton exigé |
+| `GET /api/admin/commandes` | Les commandes à table du jour, jeton exigé |
+| `POST /api/admin/commande/servie` | Marque une commande servie, jeton exigé |
+| `GET /api/admin/qr` | Les liens signés des six tables, jeton exigé |
+
+`POST /api/orders` sert les deux services. La présence d'un `tableId` fait
+basculer tout le parcours : on mange sur place, sans heure de retrait ni
+coordonnées, et la commande part dans une partition `salle-<jour>` avec son
+numéro de table. Sans `tableId`, c'est l'emporter, inchangé.
 
 Trois garde-fous portent tout l'édifice :
 
@@ -174,6 +190,7 @@ déployée. Dans *Configuration*, ajouter les variables d'application :
 | `BREVO_SENDER_EMAIL` | l'adresse vérifiée |
 | `BREVO_SENDER_NAME` | `Ô'resto (démonstration)` |
 | `ADMIN_PASSWORD` | le mot de passe du back-office, voir l'étape 5 |
+| `QR_SECRET` | la clé de signature des codes de table, voir l'étape 6 |
 
 Enfin, dans les *Secrets* du dépôt GitHub, déposer le jeton de déploiement de la
 Static Web App sous le nom `AZURE_STATIC_WEB_APPS_API_TOKEN`.
@@ -193,6 +210,25 @@ suffit à la clore.
 Choisir une phrase longue et propre à ce site. Sans cette variable, `/admin`
 s'affiche mais annonce que le back-office n'est pas configuré, et aucune route
 d'administration ne répond.
+
+### 6. Codes QR des tables
+
+Un code QR posé sur une table n'est pas un secret : il est photographiable par
+n'importe qui, et son adresse se devine. Ce qui doit être difficile, c'est de
+fabriquer une adresse valable **sans avoir vu de code**. Chaque table porte donc
+une signature courte, calculée à partir de son identifiant et de `QR_SECRET`.
+
+Renseigner cette variable, puis imprimer la planche depuis **`/qr`**, accessible
+depuis le back-office. Les codes restent valables tant que le secret ne change
+pas ; le changer périme toute la planche d'un coup, ce qui est exactement le
+geste utile si elle vous échappe.
+
+Sans `QR_SECRET`, le site fonctionne normalement : seule la commande à table est
+refusée, avec la raison affichée.
+
+Le service en salle suit les mêmes heures que le comptoir. Une commande envoyée
+en dehors, ou un dimanche et un lundi, est refusée : « Le service est fermé pour
+le moment. »
 
 Sans ces variables, le site répond quand même : la carte et les disponibilités
 échouent proprement avec un message, et une réservation enregistrée dont

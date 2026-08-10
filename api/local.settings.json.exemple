@@ -10,6 +10,7 @@
     "BREVO_SENDER_EMAIL": "adresse-vérifiée@exemple.be",
     "BREVO_SENDER_NAME": "Ô'resto (démonstration)",
 
-    "ADMIN_PASSWORD": "un-mot-de-passe-long-et-unique"
+    "ADMIN_PASSWORD": "un-mot-de-passe-long-et-unique",
+    "QR_SECRET": "une-autre-phrase-longue-et-unique"
   }
 }

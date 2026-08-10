@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ô'resto · Codes QR des tables</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0C0810">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500&family=Karla:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/qr.css">
+</head>
+<body class="adm">
+
+<header class="adm__head" data-ecran>
+  <div class="adm__brand">
+    <img class="adm__mark" src="favicon.svg" alt="" width="26" height="26">
+    <span>Ô'resto</span>
+    <span class="adm__role">Codes QR</span>
+  </div>
+  <nav class="adm__nav">
+    <a class="btn btn--ghost" href="admin.html">Retour à la carte</a>
+    <button type="button" class="btn btn--solid" id="qr-imprimer">Imprimer</button>
+  </nav>
+</header>
+
+<main class="adm__corps">
+
+  <section data-ecran id="qr-intro">
+    <h1 class="display display--m">Codes QR des tables</h1>
+    <p class="adm__aide">Une planche par service : découpez, posez un code sur chaque table. Scanné, il ouvre la carte avec la table déjà reconnue, sans que le client ait à la choisir.</p>
+    <p class="adm__aide">Chaque code porte une signature calculée par le serveur. Une adresse forgée à la main est refusée. Changer <code>QR_SECRET</code> périme toute la planche d'un coup, ce qui est le geste utile si elle vous échappe.</p>
+    <p class="form__error" id="qr-erreur" role="alert" hidden></p>
+  </section>
+
+  <div class="qr-planche" id="qr-planche"></div>
+
+</main>
+
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/qr.js" defer></script>
+</body>
+</html>

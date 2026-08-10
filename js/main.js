@@ -11,6 +11,18 @@
   var reduce   = reduceMQ.matches;
   var live     = $('#live');
 
+  /* Commande à table : le code QR posé sur la table porte son identifiant et
+     une signature. Leur seule présence dans l'adresse change tout le parcours
+     de commande — on mange ici, tout de suite. Le nom de la table et la
+     validité du lien sont confirmés par le serveur, jamais devinés ici. */
+  var TABLE = (function () {
+    var p = new URLSearchParams(location.search);
+    var id = p.get('table');
+    var cle = p.get('cle');
+    if (!id || !cle) return null;
+    return { id: id, cle: cle, nom: '', confirmee: false };
+  })();
+
   function say(msg) { if (live) { live.textContent = ''; setTimeout(function () { live.textContent = msg; }, 40); } }
 
   var euroRond = new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -1426,6 +1438,11 @@
       dessine();
     }
 
+    function libelleValider() {
+      if (!TABLE) return 'Valider la commande';
+      return TABLE.nom ? 'Envoyer à ' + TABLE.nom.toLowerCase() : 'Envoyer à la table';
+    }
+
     function dessine() {
       var n = nb();
       elCompte.textContent = n;
@@ -1518,7 +1535,9 @@
         }
 
         c.items.forEach(function (it) {
-          var dispo = it.emporter !== false;
+          /* Un plat que la maison ne laisse pas sortir se commande
+             parfaitement à table : la restriction ne vaut que pour l'emporter. */
+          var dispo = TABLE ? true : it.emporter !== false;
           var row = document.createElement('article');
           row.className = 'dish' + (dispo ? '' : ' dish--off');
 
@@ -1538,6 +1557,11 @@
             off.className = 'dish__off';
             off.textContent = 'Servi en salle uniquement.';
             bloc2.appendChild(off);
+          } else if (TABLE && it.emporter === false) {
+            var ici = document.createElement('p');
+            ici.className = 'dish__off dish__ici';
+            ici.textContent = 'Servi en salle : vous y êtes.';
+            bloc2.appendChild(ici);
           }
 
           var p = document.createElement('span');
@@ -1618,7 +1642,8 @@
       elTiroir.classList.add('is-open');
       elTiroir.setAttribute('aria-hidden', 'false');
       $('#cart-open').setAttribute('aria-expanded', 'true');
-      dessineRetrait();
+      /* À table, il n'y a pas d'heure à choisir : c'est pour maintenant. */
+      if (!TABLE) dessineRetrait();
       var c = $('#cart-close');
       if (c) setTimeout(function () { c.focus(); }, 60);
     }
@@ -1652,7 +1677,42 @@
       return tout;
     }
 
+    /* ---------- envoi à la table ----------
+       Ni heure de retrait ni coordonnées : on est assis, la commande part au
+       comptoir avec le seul numéro de table. */
+    function envoieALaTable() {
+      if (envoiEnCours) return;
+
+      envoiEnCours = true;
+      elValider.disabled = true;
+      elValider.textContent = 'Envoi…';
+      montreErreur(elErreur, '');
+
+      API.post('orders', {
+        articles: Object.keys(lignes).map(function (id) { return { id: id, qte: lignes[id] }; }),
+        tableId: TABLE.id,
+        cle: TABLE.cle
+      }).then(function (rep) {
+        envoiEnCours = false;
+        elValider.textContent = libelleValider();
+        $('#o-ref').textContent = rep.reference;
+        $('#o-done-text').textContent =
+          rep.pieces + ' article' + (rep.pieces > 1 ? 's' : '') + ', ' + prix(rep.totalCents) +
+          '. Le comptoir prépare, on vous apporte ça à ' + rep.tableNom.toLowerCase() +
+          '. Le paiement se fait en fin de repas.';
+        dessineFidelite('o-fid', null);
+        elFini.hidden = false;
+        say('Commande envoyée à la table, numéro ' + rep.reference);
+      }, function (e) {
+        envoiEnCours = false;
+        elValider.textContent = libelleValider();
+        elValider.disabled = false;
+        montreErreur(elErreur, e.message);
+      });
+    }
+
     function valide() {
+      if (TABLE) { envoieALaTable(); return; }
       if (envoiEnCours) return;
       if (!champsValides(true)) {
         montreErreur(elErreur, 'Complétez vos coordonnées pour recevoir la confirmation.');
@@ -1684,7 +1744,7 @@
         mail: $('#o-mail').value
       }).then(function (rep) {
         envoiEnCours = false;
-        elValider.textContent = 'Valider la commande';
+        elValider.textContent = libelleValider();
         var quand = sel.selectedOptions.length ? sel.selectedOptions[0].textContent : '';
         $('#o-ref').textContent = rep.reference;
         $('#o-done-text').textContent =
@@ -1695,7 +1755,7 @@
         say('Commande enregistrée, numéro ' + rep.reference);
       }, function (e) {
         envoiEnCours = false;
-        elValider.textContent = 'Valider la commande';
+        elValider.textContent = libelleValider();
         elValider.disabled = false;
         montreErreur(elErreur, e.message);
         /* Une heure de retrait devenue invalide se recalcule sur-le-champ. */
@@ -1743,9 +1803,60 @@
       init: init,
       dessineMenu: dessineMenu,
       fermeTiroir: fermeTiroir,
+      /* Le nom de la table n'arrive qu'après la réponse du serveur : le
+         bouton d'envoi se relit à ce moment-là. */
+      majLibelle: function () { if (elValider && !envoiEnCours) elValider.textContent = libelleValider(); },
       tiroirOuvert: function () { return !!elTiroir && elTiroir.classList.contains('is-open'); }
     };
   })();
+
+  /* ===================================================================
+     9 bis. Le client assis : la feuille de commande devient un carnet
+
+     Ce qui disparaît est aussi parlant que ce qui reste : plus d'heure de
+     retrait, plus de coordonnées, plus de promesse d'e-mail. On est là.
+     =================================================================== */
+  function modeTable(table) {
+    var feuille = $('#sheet-commander');
+    if (!feuille) return;
+    feuille.classList.add('est-a-table');
+
+    var retrait = $('.cart__pickup', feuille);
+    if (retrait) retrait.hidden = true;
+    var contact = $('#cart-contact');
+    if (contact) contact.hidden = true;
+
+    var entete = $('.sheet__pickup', feuille);
+    if (entete) entete.textContent = table.nom + ' · votre commande part droit au comptoir.';
+
+    var corps = $('#cart-body');
+    if (corps) {
+      var banniere = document.createElement('p');
+      banniere.className = 'cart__table';
+      banniere.textContent = 'Commande pour ' + table.nom.toLowerCase();
+      corps.insertBefore(banniere, corps.firstChild);
+    }
+
+    var note = $('.cart__note', feuille);
+    if (note) note.textContent = 'Le paiement se fait en fin de repas.';
+
+    panier.majLibelle();
+  }
+
+  /* Le lien est vérifié avant que la carte se dessine : c'est lui qui décide
+     de ce qui est commandable. Un lien forgé ramène au site ordinaire plutôt
+     que de laisser espérer une commande que le serveur refusera. */
+  function confirmeTable() {
+    return API.get('table?id=' + encodeURIComponent(TABLE.id) +
+      '&cle=' + encodeURIComponent(TABLE.cle)).then(function (t) {
+      TABLE.nom = t.nom;
+      TABLE.confirmee = true;
+      modeTable(TABLE);
+    }, function (e) {
+      TABLE = null;
+      say(e.message);
+    });
+  }
 
   /* ===================================================================
      10. Démarrage
@@ -2168,11 +2279,20 @@
     feuilles();
     entrees();
 
-    /* Les deux affichages de la carte attendent la même réponse. */
-    chargeCarte().then(function () {
-      carteEditoriale();
-      panier.dessineMenu();
-    }, carteIndisponible);
+    /* La table se tranche avant que la carte se dessine : c'est elle qui
+       décide de ce qui est commandable, le ramen ne sortant pas de la maison
+       mais se servant très bien à table. */
+    var tableReglee = TABLE ? confirmeTable() : Promise.resolve();
+
+    tableReglee.then(function () {
+      /* Les deux affichages de la carte attendent la même réponse. */
+      return chargeCarte().then(function () {
+        carteEditoriale();
+        panier.dessineMenu();
+        /* Le code a été scanné : on ouvre le carnet sans le faire chercher. */
+        if (TABLE) demandeOuverture('commander');
+      }, carteIndisponible);
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', demarre);

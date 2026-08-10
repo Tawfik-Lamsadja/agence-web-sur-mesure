@@ -31,7 +31,15 @@
   var elCats     = $('#adm-cats');
   var elCompte   = $('#adm-compte');
 
+  var elSalleCompte = $('#adm-salle-compte');
+  var elCommandes   = $('#adm-commandes');
+
   var CARTE = [];
+
+  /* Le comptoir garde la page ouverte pendant le service : elle se relit
+     toute seule, sans qu'on ait à y penser. */
+  var PERIODE_RELECTURE_MS = 20000;
+  var relecture = null;
 
   /* ===================================================================
      Accès au serveur
@@ -110,7 +118,130 @@
       CARTE = data.categories || [];
       dessine();
       montreAtelier();
+      chargeCommandes();
+      lanceRelecture();
     });
+  }
+
+  /* ===================================================================
+     Les commandes à table
+     =================================================================== */
+  var heure = new Intl.DateTimeFormat('fr-BE', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels'
+  });
+
+  function chargeCommandes() {
+    return requete('GET', 'admin/commandes').then(function (data) {
+      dessineCommandes(data.commandes || [], data.enAttente || 0);
+    }, function (e) {
+      if (gere(e)) return;
+      elSalleCompte.textContent = e.message;
+    });
+  }
+
+  function lanceRelecture() {
+    if (relecture) clearInterval(relecture);
+    relecture = setInterval(function () {
+      if (document.hidden) return;
+      chargeCommandes();
+    }, PERIODE_RELECTURE_MS);
+  }
+
+  function dessineCommandes(liste, enAttente) {
+    elCommandes.textContent = '';
+
+    var attente = liste.filter(function (c) { return c.statut === 'enregistree'; });
+    elSalleCompte.textContent = attente.length
+      ? enAttente + (enAttente > 1 ? ' commandes en attente' : ' commande en attente') +
+        ', ' + liste.length + ' aujourd\'hui. La page se relit toute seule.'
+      : 'Rien en attente. ' + liste.length +
+        (liste.length > 1 ? ' commandes servies' : ' commande servie') +
+        ' aujourd\'hui. La page se relit toute seule.';
+
+    if (!liste.length) {
+      var vide = document.createElement('p');
+      vide.className = 'adm__aide';
+      vide.textContent = 'Aucune commande à table pour l’instant.';
+      elCommandes.appendChild(vide);
+      return;
+    }
+
+    liste.forEach(function (c) {
+      var servie = c.statut === 'servie';
+      var bloc = document.createElement('article');
+      bloc.className = 'adm-cmd' + (servie ? ' est-servie' : '');
+
+      var tete = document.createElement('header');
+      tete.className = 'adm-cmd__head';
+
+      var t = document.createElement('p');
+      t.className = 'adm-cmd__table';
+      t.textContent = c.tableNom || c.tableId;
+      tete.appendChild(t);
+
+      var q = document.createElement('p');
+      q.className = 'adm-cmd__meta';
+      q.textContent = heure.format(new Date(c.creeLe)) + ' · ' + c.reference +
+        ' · ' + c.pieces + (c.pieces > 1 ? ' articles' : ' article') +
+        ' · ' + euro.format(c.totalCents / 100);
+      tete.appendChild(q);
+
+      bloc.appendChild(tete);
+
+      var ul = document.createElement('ul');
+      ul.className = 'adm-cmd__lignes';
+      (c.articles || []).forEach(function (a) {
+        var li = document.createElement('li');
+        li.textContent = a.qte + ' × ' + a.nom;
+        ul.appendChild(li);
+      });
+      bloc.appendChild(ul);
+
+      if (c.note) {
+        var n = document.createElement('p');
+        n.className = 'adm-cmd__note';
+        n.textContent = c.note;
+        bloc.appendChild(n);
+      }
+
+      var pied = document.createElement('div');
+      pied.className = 'adm-cmd__pied';
+
+      if (servie) {
+        var fait = document.createElement('p');
+        fait.className = 'adm-cmd__servie';
+        fait.textContent = 'Servie';
+        pied.appendChild(fait);
+      } else {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn btn--solid';
+        b.textContent = 'Marquer servie';
+        b.addEventListener('click', function () {
+          b.disabled = true;
+          b.textContent = 'Enregistrement…';
+          requete('POST', 'admin/commande/servie', { jour: c.jour || jourDe(c.creeLe), reference: c.reference })
+            .then(chargeCommandes, function (e) {
+              b.disabled = false;
+              b.textContent = 'Marquer servie';
+              if (gere(e)) return;
+              dit(elErreur, e.message);
+            });
+        });
+        pied.appendChild(b);
+      }
+
+      bloc.appendChild(pied);
+      elCommandes.appendChild(bloc);
+    });
+  }
+
+  /* Le jour de service, à l'heure de Bruxelles : c'est la clé de partition. */
+  function jourDe(iso) {
+    var fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+    return fmt.format(new Date(iso));
   }
 
   function champ(etiquette, type, valeur, attrs) {
@@ -337,6 +468,7 @@
 
   $('#adm-sortir').addEventListener('click', function () {
     sessionStorage.removeItem(CLE_JETON);
+    if (relecture) { clearInterval(relecture); relecture = null; }
     montrePorte('Session fermée.');
   });
 

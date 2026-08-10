@@ -1,0 +1,95 @@
+/* =========================================================================
+   Ô'resto · planche de codes QR
+
+   Deux états pour une seule page : à l'écran elle se lit comme le reste du
+   back-office, à l'impression elle devient une planche à découper, en noir
+   sur blanc. Un code QR clair sur fond sombre ne se scanne pas de façon
+   fiable : c'est l'impression qui commande ici, pas la palette.
+   ========================================================================= */
+
+.qr-planche {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+.qr-carte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-3);
+  border: 1px solid var(--c-line);
+  background: var(--c-plum-950);
+  text-align: center;
+}
+
+/* Le code lui-même reste toujours sur blanc, à l'écran comme au papier. */
+.qr-carte__code {
+  background: #fff;
+  padding: 12px;
+  border-radius: 2px;
+  line-height: 0;
+}
+.qr-carte__code img,
+.qr-carte__code canvas { display: block; width: 168px; height: 168px; }
+
+.qr-carte__nom {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 1.3rem;
+  line-height: 1.15;
+}
+.qr-carte__cap {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-mauve);
+}
+.qr-carte__mot {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--c-bone-dim);
+  max-width: 24ch;
+}
+.qr-carte__url {
+  margin: 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: var(--c-mauve-dim);
+  word-break: break-all;
+}
+
+/* ============================ Impression ================================ */
+@media print {
+  /* Le fond sombre du site coûterait une cartouche et nuirait au contraste. */
+  body.adm, .adm__corps { background: #fff; color: #000; }
+  .adm__corps { max-width: none; padding: 0; }
+
+  [data-ecran] { display: none !important; }
+
+  .qr-planche {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10mm;
+    margin: 0;
+  }
+
+  .qr-carte {
+    border: 1px dashed #999;
+    background: #fff;
+    color: #000;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    padding: 8mm 6mm;
+  }
+  .qr-carte__code { padding: 0; }
+  .qr-carte__code img,
+  .qr-carte__code canvas { width: 46mm; height: 46mm; }
+
+  .qr-carte__nom { color: #000; }
+  .qr-carte__cap { color: #444; }
+  .qr-carte__mot { color: #222; }
+  .qr-carte__url { display: none; }
+}

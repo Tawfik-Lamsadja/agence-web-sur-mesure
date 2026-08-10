@@ -1422,6 +1422,18 @@ p { max-width: var(--w-text); }
   font-size: 0.9rem;
 }
 
+/* Commande à table : le bandeau qui rappelle où l'on est assis. */
+.cart__table {
+  margin: 0 0 var(--s-3);
+  padding: 10px 14px;
+  border-left: 2px solid var(--c-shu);
+  background: rgba(192, 73, 43, 0.1);
+  font-size: 0.84rem;
+  letter-spacing: 0.04em;
+  color: var(--c-bone);
+}
+.dish__ici { color: var(--c-mauve); }
+
 .cart__pickup { display: grid; gap: 6px; padding-top: var(--s-2); }
 .cart__pickup label { font-size: 0.78rem; letter-spacing: 0.08em; }
 

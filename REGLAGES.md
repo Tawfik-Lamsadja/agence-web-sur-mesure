@@ -202,6 +202,62 @@ Deux points de conception à connaître avant d'y toucher :
   personnes qui éditent en même temps se recouvriraient en silence. Le second
   reçoit un 409 et l'invitation à recharger.
 
+## 6. La commande à table
+
+### La structure retenue
+
+Une seule table Storage, `commandes`, sert les deux services. Un champ les
+distingue, et la salle a sa propre clé de partition.
+
+| | À emporter | À table |
+|---|---|---|
+| `partitionKey` | `2026-08-11` (jour du retrait) | `salle-2026-08-11` (jour du service) |
+| `rowKey` | `EM-4K2P9` | `SA-7X1M4` |
+| `service` | `emporter` | `salle` |
+| Propre au service | `retrait`, `nom`, `tel`, `mail` | `tableId`, `tableNom` |
+| Commun | `articles`, `totalCents`, `pieces`, `note`, `statut`, `creeLe` | idem |
+
+Pourquoi ainsi plutôt qu'une seconde table : un seul point d'entrée, une seule
+retarification depuis la carte, un seul plafond à tenir. Et pourquoi une
+partition dédiée plutôt qu'un simple champ : la vue du comptoir lit **une seule
+partition**, sans balayer les commandes à emporter du jour ni filtrer sur une
+propriété non indexée. C'est la requête qui vieillit le mieux.
+
+Les commandes déjà en base n'ont pas de champ `service` : le code lit leur
+absence comme « emporter ».
+
+Statuts en salle : `enregistree` → `servie`.
+
+### Réglages
+
+| Réglage | Où | Valeur | Effet |
+|---|---|---|---|
+| `QR_SECRET` | variable d'application | — | Clé de signature des codes. Le changer périme toute la planche imprimée. |
+| `LONGUEUR_CLE` | `api/src/shared/qr.js` | `12` | Longueur de la signature, soit 72 bits. Plus court raccourcit l'URL et le code, mais rapproche la fraude. |
+| `PLAFOND_TABLE` | `api/src/functions/orders.js` | `30` par heure | **Compté par table, pas par IP.** Au restaurant tout le monde passe par le même réseau : compter par IP bloquerait les tables suivantes dès la première commande. |
+| `PERIODE_RELECTURE_MS` | `js/admin.js` | `20 s` | Rafraîchissement de la vue du comptoir. La relecture est suspendue quand l'onglet est caché. |
+| Correction d'erreur | `js/qr.js` | `'M'` | Un code posé sur une table prend des taches et des reflets : il doit survivre à un quart de dégâts. |
+
+### Deux comportements à connaître
+
+- **Le ramen redevient commandable.** Un plat marqué « pas à emporter » se sert
+  très bien à table : la restriction ne vaut que pour l'emporter, côté page
+  comme côté serveur.
+- **Le service en salle suit les heures du comptoir.** Hors service, dimanche et
+  lundi compris, la commande est refusée. C'est voulu, et c'est ce qui oblige à
+  figer l'horloge du banc d'essai pour vérifier le parcours.
+
+### La planche imprimée
+
+`/qr` dessine les six codes avec la bibliothèque `qrcode-generator`, vendorisée
+dans `js/vendor` : aucune requête vers un tiers au moment où le restaurateur
+imprime. Le serveur seul connaît `QR_SECRET`, c'est donc lui qui compose les
+liens ; la page ne fait que les tracer.
+
+La feuille `css/qr.css` bascule la page en noir sur blanc à l'impression. Un
+code clair sur fond sombre ne se scanne pas de façon fiable : ici c'est
+l'impression qui commande, pas la palette.
+
 ## Garde-fous transversaux
 
 - `prefers-reduced-motion` : chapitres empilés sur images fixes, pas de

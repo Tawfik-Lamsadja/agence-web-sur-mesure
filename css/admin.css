@@ -78,6 +78,74 @@
   color: var(--c-bone);
 }
 
+/* ---- Commandes à table ----
+   Ce que le comptoir regarde en service : la table d'abord, en grand, le reste
+   ensuite. Une commande servie s'efface sans disparaître. */
+.adm__salle { margin-bottom: var(--s-7); }
+.adm__titre--carte { margin-top: var(--s-6); }
+
+.adm-cmd {
+  border: 1px solid var(--c-line);
+  border-left: 3px solid var(--c-shu);
+  background: var(--c-plum-950);
+  padding: var(--s-3);
+  margin-bottom: var(--s-2);
+}
+.adm-cmd.est-servie {
+  border-left-color: var(--c-line-strong);
+  opacity: 0.5;
+}
+
+.adm-cmd__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2) var(--s-3);
+  margin-bottom: var(--s-2);
+}
+.adm-cmd__table {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 1.45rem;
+}
+.adm-cmd__meta {
+  margin: 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  color: var(--c-bone-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-cmd__lignes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.adm-cmd__lignes li {
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+}
+.adm-cmd__note {
+  margin: var(--s-2) 0 0;
+  font-size: 0.84rem;
+  color: var(--c-mauve);
+}
+.adm-cmd__pied {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--s-3);
+}
+.adm-cmd__pied .btn { min-height: 42px; font-size: 0.8rem; }
+.adm-cmd__servie {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-bone-dim);
+}
+
 /* ---- Catégorie ---- */
 .adm-cat {
   border: 1px solid var(--c-line);

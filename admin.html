@@ -49,8 +49,18 @@
 
   <!-- ============ L'atelier ============ -->
   <section class="adm__atelier" id="adm-atelier" hidden>
-    <header class="adm__titre">
-      <h1 class="display display--m">La carte</h1>
+
+    <!-- Les commandes en salle passent avant la carte : c'est ce qui presse. -->
+    <section class="adm__salle" id="adm-salle">
+      <header class="adm__titre">
+        <h1 class="display display--m">Commandes à table</h1>
+        <p class="adm__aide" id="adm-salle-compte">Lecture en cours…</p>
+      </header>
+      <div id="adm-commandes"></div>
+    </section>
+
+    <header class="adm__titre adm__titre--carte">
+      <h2 class="display display--m">La carte</h2>
       <p class="adm__aide" id="adm-compte"></p>
     </header>
 

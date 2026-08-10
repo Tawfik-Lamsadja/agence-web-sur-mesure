@@ -1,12 +1,14 @@
 'use strict';
 
 const { app } = require('@azure/functions');
-const { carte, empaquette, depaquette, estAbsent } = require('../shared/storage');
+const { carte, commandes, empaquette, depaquette, estAbsent } = require('../shared/storage');
 const { json, erreur, corpsJson, ipClient } = require('../shared/http');
 const { texte, entier } = require('../shared/valide');
 const menu = require('../shared/menu');
 const quota = require('../shared/quota');
 const admin = require('../shared/admin');
+const qr = require('../shared/qr');
+const S = require('../shared/service');
 
 const TENTATIVES_HORAIRE = 10;
 
@@ -158,6 +160,120 @@ async function ecritItems(entite, items) {
 function conflitEcriture(e) {
   return !!e && (e.statusCode === 412 || e.code === 'UpdateConditionNotSatisfied');
 }
+
+/* ===================================================================
+   Les commandes à table
+
+   Le comptoir a besoin de deux choses : voir arriver ce qui est commandé, et
+   pouvoir dire que c'est servi. La lecture porte sur une seule partition, celle
+   du jour en salle : aucun balayage, et les commandes à emporter n'y sont pas.
+   =================================================================== */
+app.http('adminCommandes', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'admin/commandes',
+  handler: async (request, contexte) => {
+    const refuse = admin.refus(request);
+    if (refuse) return refuse;
+
+    const jour = texte(request.query.get('jour'), 10) || S.jourISO(new Date());
+    if (!S.dateValide(jour)) return erreur(400, 'jour_invalide', 'Jour attendu au format AAAA-MM-JJ.');
+
+    try {
+      const liste = [];
+      const entites = commandes().listEntities({
+        queryOptions: { filter: `PartitionKey eq 'salle-${jour}'` }
+      });
+
+      for await (const e of entites) {
+        liste.push({
+          reference: e.rowKey,
+          tableId: e.tableId,
+          tableNom: e.tableNom,
+          articles: depaquette(e.articles),
+          totalCents: e.totalCents,
+          pieces: e.pieces,
+          note: e.note || '',
+          statut: e.statut || 'enregistree',
+          creeLe: e.creeLe
+        });
+      }
+
+      /* La plus ancienne d'abord : c'est l'ordre dans lequel on sert. */
+      liste.sort((a, b) => String(a.creeLe).localeCompare(String(b.creeLe)));
+
+      return json(200, {
+        jour,
+        commandes: liste,
+        enAttente: liste.filter((c) => c.statut === 'enregistree').length
+      });
+    } catch (e) {
+      contexte.error(`Lecture des commandes impossible : ${e.message}`);
+      return erreur(503, 'indisponible', 'Les commandes sont momentanément inaccessibles.');
+    }
+  }
+});
+
+app.http('adminCommandeServie', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'admin/commande/servie',
+  handler: async (request, contexte) => {
+    const refuse = admin.refus(request);
+    if (refuse) return refuse;
+
+    const corps = await corpsJson(request);
+    if (!corps) return erreur(400, 'corps_invalide', 'Corps de requête JSON attendu.');
+
+    const jour = texte(corps.jour, 10);
+    const reference = texte(corps.reference, 40);
+    if (!S.dateValide(jour) || !reference) {
+      return erreur(400, 'parametres_manquants', 'Jour et référence attendus.');
+    }
+
+    try {
+      await commandes().updateEntity(
+        { partitionKey: `salle-${jour}`, rowKey: reference, statut: 'servie', servieLe: new Date().toISOString() },
+        'Merge'
+      );
+      return json(200, { reference, statut: 'servie' });
+    } catch (e) {
+      if (estAbsent(e)) return erreur(404, 'commande_inconnue', 'Cette commande n’existe plus.');
+      contexte.error(`Marquage impossible : ${e.message}`);
+      return erreur(503, 'indisponible', 'La commande n’a pas pu être mise à jour.');
+    }
+  }
+});
+
+/* ===================================================================
+   Les codes QR des tables
+
+   Le serveur seul connaît QR_SECRET : c'est donc lui qui compose les liens.
+   La page d'impression ne fait que les dessiner.
+   =================================================================== */
+app.http('adminQr', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'admin/qr',
+  handler: async (request) => {
+    const refuse = admin.refus(request);
+    if (refuse) return refuse;
+
+    if (!qr.configure()) {
+      return erreur(503, 'qr_non_configure',
+        "La commande à table n'est pas configurée sur ce serveur : il manque QR_SECRET.");
+    }
+
+    return json(200, {
+      tables: S.TABLES.map((t) => ({
+        id: t.id,
+        nom: t.nom,
+        cap: t.cap,
+        cle: qr.cleTable(t.id)
+      }))
+    });
+  }
+});
 
 app.http('adminPlat', {
   methods: ['POST', 'DELETE'],
