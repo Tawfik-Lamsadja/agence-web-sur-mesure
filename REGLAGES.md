@@ -192,7 +192,14 @@ Page `/admin`, hors navigation publique. Réglages côté serveur :
 | `PLATS_MAX` | `api/src/functions/admin.js` | `40` | Plats par catégorie. |
 | `DUREE_CACHE_MS` | `api/src/shared/menu.js` | `60 s` | Cache de la carte publique. Une écriture du back-office le vide dans son instance ; une autre instance peut encore servir l'ancienne carte le temps de son propre cache, d'où la mention « visible dans la minute » affichée au restaurateur. |
 
-Deux points de conception à connaître avant d'y toucher :
+**Les routes vivent sous `gestion/`, pas sous `admin/`.** L'hôte Azure Functions
+réserve le préfixe `admin/` pour ses propres points de contrôle
+(`admin/host/status`, `admin/functions/…`) et refuse d'indexer toute fonction
+qui s'y installe : elles disparaissent en bloc, avec un simple 404 côté client
+et le motif enfoui dans le journal verbeux de l'hôte. La page publique, elle,
+reste bien `/admin` — seules les routes d'API sont concernées.
+
+Trois points de conception à connaître avant d'y toucher :
 
 - **La comparaison du mot de passe est à temps constant** (`memeChaine`). Une
   comparaison ordinaire s'arrête au premier caractère qui diffère et laisse

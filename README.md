@@ -64,7 +64,7 @@ staticwebapp.config.json   configuration Azure Static Web Apps
 ASSETS.md                  liste des assets et prompts de génération
 
 api/                       Azure Functions, Node.js
-  src/functions/           les quatre points d'entrée HTTP
+  src/functions/           les points d'entrée HTTP
   src/shared/              règles de service, stockage, Brevo, validation
   scripts/seed-menu.js     crée les tables et charge la carte
 ```
@@ -98,13 +98,13 @@ Deux conséquences de ce modèle méritent d'être connues :
 | `POST /api/reservations` | Enregistre une réservation, envoie la confirmation |
 | `POST /api/orders` | Enregistre une commande à emporter, envoie la confirmation |
 | `GET /api/table?id=…&cle=…` | Nomme la table d'un code QR, refuse un lien forgé |
-| `POST /api/admin/session` | Vérifie le mot de passe du back-office, délivre un jeton |
-| `GET /api/admin/carte` | La carte telle qu'on l'édite, jeton exigé |
-| `POST /api/admin/plat` | Ajoute ou modifie un plat, jeton exigé |
-| `DELETE /api/admin/plat` | Retire un plat, jeton exigé |
-| `GET /api/admin/commandes` | Les commandes à table du jour, jeton exigé |
-| `POST /api/admin/commande/servie` | Marque une commande servie, jeton exigé |
-| `GET /api/admin/qr` | Les liens signés des six tables, jeton exigé |
+| `POST /api/gestion/session` | Vérifie le mot de passe du back-office, délivre un jeton |
+| `GET /api/gestion/carte` | La carte telle qu'on l'édite, jeton exigé |
+| `POST /api/gestion/plat` | Ajoute ou modifie un plat, jeton exigé |
+| `DELETE /api/gestion/plat` | Retire un plat, jeton exigé |
+| `GET /api/gestion/commandes` | Les commandes à table du jour, jeton exigé |
+| `POST /api/gestion/commande/servie` | Marque une commande servie, jeton exigé |
+| `GET /api/gestion/qr` | Les liens signés des six tables, jeton exigé |
 
 `POST /api/orders` sert les deux services. La présence d'un `tableId` fait
 basculer tout le parcours : on mange sur place, sans heure de retrait ni
@@ -236,14 +236,42 @@ l'e-mail n'a pas pu partir le signale au lieu de le promettre.
 
 ## Lancer en local
 
-```bash
-npm install -g azure-functions-core-tools@4 --unsafe-perm true
-npm install -g @azure/static-web-apps-cli
-swa start . --api-location api
+```powershell
+powershell -File scripts\dev.ps1
 ```
 
 Puis ouvrir <http://localhost:4280>, qui sert la page et l'API sur la même
 origine. `api/local.settings.json` fournit les clés et n'est jamais versionné.
+
+Le script existe parce que deux versions de Node doivent cohabiter : Azure
+Functions Core Tools ne tourne que sur Node 18, 20 ou 22, alors que la machine
+a Node 24 par défaut pour le reste du projet.
+
+Mettre Node 20 en tête du `PATH` **ne suffit pas**, et c'est le piège. Le
+raccourci `swa.cmd` créé par npm contient :
+
+```bat
+IF EXIST "%dp0%\node.exe" ( SET "_prog=%dp0%\node.exe" )
+```
+
+Comme le préfixe global de npm est ici le dossier d'installation de Node 24,
+lequel contient `node.exe`, le raccourci se lie en dur à Node 24 et ignore le
+`PATH`. Le script contourne cela en donnant directement le point d'entrée
+JavaScript de swa à Node 20 ; le `PATH` reste utile pour `func.exe`, qui cherche
+son interpréteur par ce biais. Rien n'est modifié sur la machine.
+
+Deuxième piège, dont le symptôme est déroutant : un `func` resté en vie d'un
+essai précédent garde le port 7071. swa démarre alors quand même, sa tentative
+de lancer l'API échoue dans le flux d'erreur, et c'est l'ancien processus qui
+répond — on croit tester le code du jour en interrogeant celui d'hier. Le
+script refuse de démarrer dans ce cas et propose :
+
+```powershell
+powershell -File scripts\dev.ps1 -Nettoyer
+```
+
+Les chemins de Node 20, de func et du préfixe npm sont en tête du script : ce
+sont les seules lignes à adapter sur une autre machine.
 
 ## Déploiement
 

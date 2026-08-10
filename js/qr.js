@@ -88,7 +88,7 @@
     var jeton = sessionStorage.getItem(CLE_JETON) || '';
     if (!jeton) { versAdmin('Session fermée.'); return; }
 
-    fetch('/api/admin/qr', { headers: { 'x-admin-jeton': jeton } })
+    fetch('/api/gestion/qr', { headers: { 'x-admin-jeton': jeton } })
       .then(function (r) {
         return r.text().then(function (brut) {
           var data = {};

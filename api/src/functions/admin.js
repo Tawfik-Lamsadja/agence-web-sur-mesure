@@ -10,6 +10,11 @@ const admin = require('../shared/admin');
 const qr = require('../shared/qr');
 const S = require('../shared/service');
 
+/* Les routes vivent sous « gestion » et non sous « admin » : l'hôte Functions
+   réserve le préfixe admin/ pour ses propres points de contrôle
+   (admin/host/status, admin/functions/…) et refuse d'indexer une fonction qui
+   s'y installe. La page publique, elle, reste bien /admin. */
+
 const TENTATIVES_HORAIRE = 10;
 
 const NOM_MAX = 80;
@@ -24,7 +29,7 @@ const PLATS_MAX = 40;     /* par catégorie */
 app.http('adminSession', {
   methods: ['POST'],
   authLevel: 'anonymous',
-  route: 'admin/session',
+  route: 'gestion/session',
   handler: async (request, contexte) => {
     if (!admin.configure()) {
       return erreur(503, 'admin_non_configure',
@@ -63,7 +68,7 @@ app.http('adminSession', {
 app.http('adminCarte', {
   methods: ['GET'],
   authLevel: 'anonymous',
-  route: 'admin/carte',
+  route: 'gestion/carte',
   handler: async (request, contexte) => {
     const refuse = admin.refus(request);
     if (refuse) return refuse;
@@ -171,7 +176,7 @@ function conflitEcriture(e) {
 app.http('adminCommandes', {
   methods: ['GET'],
   authLevel: 'anonymous',
-  route: 'admin/commandes',
+  route: 'gestion/commandes',
   handler: async (request, contexte) => {
     const refuse = admin.refus(request);
     if (refuse) return refuse;
@@ -217,7 +222,7 @@ app.http('adminCommandes', {
 app.http('adminCommandeServie', {
   methods: ['POST'],
   authLevel: 'anonymous',
-  route: 'admin/commande/servie',
+  route: 'gestion/commande/servie',
   handler: async (request, contexte) => {
     const refuse = admin.refus(request);
     if (refuse) return refuse;
@@ -254,7 +259,7 @@ app.http('adminCommandeServie', {
 app.http('adminQr', {
   methods: ['GET'],
   authLevel: 'anonymous',
-  route: 'admin/qr',
+  route: 'gestion/qr',
   handler: async (request) => {
     const refuse = admin.refus(request);
     if (refuse) return refuse;
@@ -278,7 +283,7 @@ app.http('adminQr', {
 app.http('adminPlat', {
   methods: ['POST', 'DELETE'],
   authLevel: 'anonymous',
-  route: 'admin/plat',
+  route: 'gestion/plat',
   handler: async (request, contexte) => {
     const refuse = admin.refus(request);
     if (refuse) return refuse;

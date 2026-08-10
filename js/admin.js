@@ -114,7 +114,7 @@
      La carte
      =================================================================== */
   function chargeCarte() {
-    return requete('GET', 'admin/carte').then(function (data) {
+    return requete('GET', 'gestion/carte').then(function (data) {
       CARTE = data.categories || [];
       dessine();
       montreAtelier();
@@ -131,7 +131,7 @@
   });
 
   function chargeCommandes() {
-    return requete('GET', 'admin/commandes').then(function (data) {
+    return requete('GET', 'gestion/commandes').then(function (data) {
       dessineCommandes(data.commandes || [], data.enAttente || 0);
     }, function (e) {
       if (gere(e)) return;
@@ -220,7 +220,7 @@
         b.addEventListener('click', function () {
           b.disabled = true;
           b.textContent = 'Enregistrement…';
-          requete('POST', 'admin/commande/servie', { jour: c.jour || jourDe(c.creeLe), reference: c.reference })
+          requete('POST', 'gestion/commande/servie', { jour: c.jour || jourDe(c.creeLe), reference: c.reference })
             .then(chargeCommandes, function (e) {
               b.disabled = false;
               b.textContent = 'Marquer servie';
@@ -348,7 +348,7 @@
       valider.textContent = 'Envoi…';
       dit(elErreur, '');
 
-      requete('POST', 'admin/plat', corps).then(function () {
+      requete('POST', 'gestion/plat', corps).then(function () {
         flash(neuf ? 'Plat ajouté à ' + categorie.nom + '.' : '« ' + corps.nom +' » enregistré.');
         return chargeCarte();
       }, function (e) {
@@ -373,7 +373,7 @@
     bouton.textContent = 'Suppression…';
     dit(elErreur, '');
 
-    requete('DELETE', 'admin/plat?categorie=' + encodeURIComponent(categorie.id) +
+    requete('DELETE', 'gestion/plat?categorie=' + encodeURIComponent(categorie.id) +
       '&plat=' + encodeURIComponent(plat.id)).then(function () {
       flash('« ' + plat.nom + ' » retiré de la carte.');
       return chargeCarte();
@@ -442,7 +442,7 @@
     elEntrer.textContent = 'Vérification…';
     dit(elErrPorte, '');
 
-    fetch('/api/admin/session', {
+    fetch('/api/gestion/session', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ motDePasse: mdp })
