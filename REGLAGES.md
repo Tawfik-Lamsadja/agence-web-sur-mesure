@@ -179,6 +179,29 @@ ne se passe rien de plus qu'avant, l'ajout au panier restant évidemment
 effectif. Un minuteur de secours retire la vignette si l'animation ne rend
 jamais la main.
 
+## 5. Le back-office
+
+Page `/admin`, hors navigation publique. Réglages côté serveur :
+
+| Réglage | Où | Valeur | Effet |
+|---|---|---|---|
+| `ADMIN_PASSWORD` | variable d'application | — | Le mot de passe, et la clé de signature des jetons. Le changer révoque toutes les sessions. |
+| `DUREE_JETON_MS` | `api/src/shared/admin.js` | `8 h` | Durée d'une session. Le jeton porte sa péremption en clair, signée. |
+| `TENTATIVES_HORAIRE` | `api/src/functions/admin.js` | `10` | Tentatives de mot de passe par heure et par IP. |
+| `PRIX_MIN` / `PRIX_MAX` | `api/src/functions/admin.js` | `50` / `50000` centimes | Bornes acceptées à l'écriture d'un plat. |
+| `PLATS_MAX` | `api/src/functions/admin.js` | `40` | Plats par catégorie. |
+| `DUREE_CACHE_MS` | `api/src/shared/menu.js` | `60 s` | Cache de la carte publique. Une écriture du back-office le vide dans son instance ; une autre instance peut encore servir l'ancienne carte le temps de son propre cache, d'où la mention « visible dans la minute » affichée au restaurateur. |
+
+Deux points de conception à connaître avant d'y toucher :
+
+- **La comparaison du mot de passe est à temps constant** (`memeChaine`). Une
+  comparaison ordinaire s'arrête au premier caractère qui diffère et laisse
+  deviner le secret caractère par caractère par le temps de réponse.
+- **Les écritures sont conditionnées par un etag.** Une catégorie est une seule
+  entité dont les plats vivent sérialisés : sans cette condition, deux
+  personnes qui éditent en même temps se recouvriraient en silence. Le second
+  reçoit un 409 et l'invitation à recharger.
+
 ## Garde-fous transversaux
 
 - `prefers-reduced-motion` : chapitres empilés sur images fixes, pas de

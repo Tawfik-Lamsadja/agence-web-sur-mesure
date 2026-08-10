@@ -51,4 +51,13 @@ async function parId() {
   return index;
 }
 
-module.exports = { categories, parId, PARTITION };
+/* Le back-office écrit dans la carte : sans cela, sa modification resterait
+   invisible jusqu'à une minute. L'oubli n'est pas grave, il est seulement
+   lent — et l'instance qui a écrit n'est pas forcément la seule en vie, donc
+   une autre peut encore servir l'ancienne carte le temps de son cache. */
+function videCache() {
+  cache = null;
+  cacheJusqua = 0;
+}
+
+module.exports = { categories, parId, videCache, PARTITION };

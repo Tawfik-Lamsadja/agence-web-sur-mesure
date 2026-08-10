@@ -90,6 +90,10 @@ Deux conséquences de ce modèle méritent d'être connues :
 | `GET /api/availability?date=AAAA-MM-JJ` | Créneaux et tables réellement libres ce jour-là |
 | `POST /api/reservations` | Enregistre une réservation, envoie la confirmation |
 | `POST /api/orders` | Enregistre une commande à emporter, envoie la confirmation |
+| `POST /api/admin/session` | Vérifie le mot de passe du back-office, délivre un jeton |
+| `GET /api/admin/carte` | La carte telle qu'on l'édite, jeton exigé |
+| `POST /api/admin/plat` | Ajoute ou modifie un plat, jeton exigé |
+| `DELETE /api/admin/plat` | Retire un plat, jeton exigé |
 
 Trois garde-fous portent tout l'édifice :
 
@@ -103,6 +107,11 @@ Trois garde-fous portent tout l'édifice :
 - **Les points d'entrée publics sont plafonnés.** Ils envoient un e-mail vers une
   adresse fournie par l'appelant : sans plafond par IP, ils serviraient à
   spammer des tiers.
+- **Le back-office est fermé côté serveur.** Le mot de passe est comparé dans la
+  fonction, à temps constant, et le jeton de session est signé avec ce même
+  secret. Lire le code de la page n'ouvre rien : sans jeton valable, chaque
+  route d'administration répond 401. Les tentatives sont plafonnées comme le
+  reste, faute de quoi le mot de passe se trouverait par force brute.
 
 Le service raisonne en heure de Bruxelles, jamais dans le fuseau du serveur ni
 dans celui du visiteur.
@@ -164,9 +173,26 @@ déployée. Dans *Configuration*, ajouter les variables d'application :
 | `BREVO_API_KEY` | la clé de l'étape 3 |
 | `BREVO_SENDER_EMAIL` | l'adresse vérifiée |
 | `BREVO_SENDER_NAME` | `Ô'resto (démonstration)` |
+| `ADMIN_PASSWORD` | le mot de passe du back-office, voir l'étape 5 |
 
 Enfin, dans les *Secrets* du dépôt GitHub, déposer le jeton de déploiement de la
 Static Web App sous le nom `AZURE_STATIC_WEB_APPS_API_TOKEN`.
+
+### 5. Back-office
+
+Le restaurateur modifie sa carte sur **`/admin`**, page qui n'est liée depuis
+aucune page publique et que les moteurs ne sont pas invités à indexer. Il n'y a
+ni compte ni base d'utilisateurs : un seul mot de passe, dans la variable
+`ADMIN_PASSWORD`.
+
+Ce mot de passe sert aussi de clé de signature des jetons de session. Le
+changer révoque donc toutes les sessions ouvertes, sans registre à tenir. Une
+session dure huit heures, et le jeton vit en `sessionStorage` : fermer l'onglet
+suffit à la clore.
+
+Choisir une phrase longue et propre à ce site. Sans cette variable, `/admin`
+s'affiche mais annonce que le back-office n'est pas configuré, et aucune route
+d'administration ne répond.
 
 Sans ces variables, le site répond quand même : la carte et les disponibilités
 échouent proprement avec un message, et une réservation enregistrée dont

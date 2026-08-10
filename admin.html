@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ô'resto · Back-office</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0C0810">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500&family=Karla:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- La feuille du site porte les variables, la base typographique, les boutons
+     et les champs : le back-office s'y branche au lieu de les redéclarer. -->
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="adm">
+
+<header class="adm__head">
+  <div class="adm__brand">
+    <img class="adm__mark" src="favicon.svg" alt="" width="26" height="26">
+    <span>Ô'resto</span>
+    <span class="adm__role">Back-office</span>
+  </div>
+  <nav class="adm__nav" id="adm-nav" hidden>
+    <a class="btn btn--ghost" href="qr.html">Codes QR des tables</a>
+    <button type="button" class="btn btn--ghost" id="adm-sortir">Fermer la session</button>
+  </nav>
+</header>
+
+<main class="adm__corps">
+
+  <!-- ============ La porte ============ -->
+  <section class="adm__porte" id="adm-porte">
+    <h1 class="display display--m">Modifier la carte</h1>
+    <p class="adm__aide">Cette page n'est liée depuis aucune page publique. Le mot de passe est vérifié par le serveur, et la session dure huit heures ou le temps de l'onglet.</p>
+
+    <form class="adm__form" id="adm-form">
+      <div class="field">
+        <label for="adm-mdp">Mot de passe</label>
+        <input type="password" id="adm-mdp" name="motDePasse" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn--solid btn--lg" id="adm-entrer">Entrer</button>
+    </form>
+
+    <p class="form__error" id="adm-porte-erreur" role="alert" hidden></p>
+  </section>
+
+  <!-- ============ L'atelier ============ -->
+  <section class="adm__atelier" id="adm-atelier" hidden>
+    <header class="adm__titre">
+      <h1 class="display display--m">La carte</h1>
+      <p class="adm__aide" id="adm-compte"></p>
+    </header>
+
+    <p class="form__error" id="adm-erreur" role="alert" hidden></p>
+    <p class="adm__flash" id="adm-flash" role="status" aria-live="polite" hidden></p>
+
+    <div id="adm-cats"></div>
+  </section>
+
+</main>
+
+<script src="js/admin.js" defer></script>
+</body>
+</html>

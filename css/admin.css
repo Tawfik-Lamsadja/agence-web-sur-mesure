@@ -1,0 +1,197 @@
+/* =========================================================================
+   Ô'resto · back-office
+
+   La feuille du site est chargée avant celle-ci : variables, base, boutons et
+   champs viennent de là. On ne redéclare rien, on pose seulement la mise en
+   page d'un outil. Même palette, même typographie, mais aucune mise en scène :
+   ici on travaille, on ne visite pas.
+   ========================================================================= */
+
+.adm { background: var(--c-void); }
+
+/* ============================== En-tête ================================= */
+.adm__head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) clamp(16px, 4vw, 40px);
+  background: var(--c-plum-950);
+  border-bottom: 1px solid var(--c-line);
+}
+.adm__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  font-family: var(--f-display);
+  font-size: 1.35rem;
+}
+.adm__mark { flex: none; }
+.adm__role {
+  font-family: var(--f-ui);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--c-mauve);
+  padding-left: var(--s-2);
+  border-left: 1px solid var(--c-line-strong);
+}
+.adm__nav { display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.adm__nav .btn { text-decoration: none; }
+
+/* ============================== Corps =================================== */
+.adm__corps {
+  max-width: 940px;
+  margin-inline: auto;
+  padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 40px) 96px;
+}
+
+.adm__aide {
+  color: var(--c-bone-dim);
+  font-size: 0.88rem;
+  margin: 0 0 var(--s-4);
+  max-width: 62ch;
+}
+
+/* ============================== La porte ================================ */
+.adm__porte { max-width: 420px; }
+.adm__porte .display { margin-bottom: var(--s-2); }
+.adm__form { display: grid; gap: var(--s-3); justify-items: start; }
+.adm__form .field { width: 100%; }
+
+/* ============================= L'atelier ================================ */
+.adm__titre { margin-bottom: var(--s-5); }
+.adm__titre .display { margin-bottom: var(--s-1); }
+.adm__titre .adm__aide { margin: 0; }
+
+.adm__flash {
+  margin: 0 0 var(--s-4);
+  padding: 10px 14px;
+  border-left: 2px solid var(--c-shu);
+  background: rgba(192, 73, 43, 0.1);
+  font-size: 0.84rem;
+  color: var(--c-bone);
+}
+
+/* ---- Catégorie ---- */
+.adm-cat {
+  border: 1px solid var(--c-line);
+  background: var(--c-plum-950);
+  margin-bottom: var(--s-4);
+}
+.adm-cat__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--c-line);
+}
+.adm-cat__nom {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+.adm-cat__note { margin: 0; font-size: 0.8rem; color: var(--c-mauve); }
+.adm-cat__compte {
+  margin: 0 0 0 auto;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-bone-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Ligne de plat ----
+   Une grille nommée plutôt que des colonnes anonymes : la ligne se replie sur
+   mobile sans que l'ordre de lecture change. */
+/* Les champs occupent toute la largeur, les actions passent dessous. Sur une
+   seule ligne, la barre d'actions mangeait la place et tronquait les noms de
+   plats, qui sont justement ce qu'on vient lire. */
+.adm-plat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 120px;
+  gap: var(--s-2) var(--s-3);
+  align-items: end;
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--c-line);
+}
+.adm-plat:last-child { border-bottom: 0; }
+.adm-plat--neuf { background: rgba(169, 140, 184, 0.05); }
+
+.adm-plat .field label {
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c-mauve);
+}
+.adm-plat input[type="text"],
+.adm-plat input[type="number"] { min-height: 42px; font-size: 0.9rem; }
+
+.adm-plat__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+.adm-plat__actions .btn { min-height: 42px; padding: 10px 16px; font-size: 0.8rem; }
+
+/* La case « à emporter » tient sur la ligne, sans casser l'alignement bas. */
+.adm-plat__emporter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  font-size: 0.8rem;
+  color: var(--c-bone-dim);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.adm-plat__emporter input {
+  width: 20px; height: 20px;
+  min-height: 0;
+  accent-color: var(--c-shu);
+  cursor: pointer;
+}
+
+/* L'identifiant ouvre la ligne d'actions et repousse les boutons à droite. */
+.adm-plat__id {
+  margin: 0 auto 0 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--c-mauve-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-plat.est-modifie { box-shadow: inset 2px 0 0 var(--c-shu); }
+.adm-plat .field__err { margin-top: 4px; }
+
+.adm-cat__ajout {
+  padding: var(--s-3);
+  border-top: 1px solid var(--c-line-strong);
+}
+
+/* ============================ Adaptatif ================================= */
+@media (max-width: 860px) {
+  .adm-plat {
+    grid-template-columns: minmax(0, 1fr) 118px;
+    align-items: start;
+  }
+  .adm-plat .field:first-child,
+  .adm-plat .field:nth-child(2) { grid-column: 1 / -1; }
+  .adm-plat__actions { grid-column: 1 / -1; }
+  .adm-plat__emporter { min-height: 0; }
+}
+
+@media (max-width: 520px) {
+  .adm-plat { grid-template-columns: minmax(0, 1fr); }
+  .adm-plat__actions .btn { flex: 1; }
+}

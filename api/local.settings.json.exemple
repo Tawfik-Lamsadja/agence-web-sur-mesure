@@ -8,6 +8,8 @@
 
     "BREVO_API_KEY": "votre-clé-brevo",
     "BREVO_SENDER_EMAIL": "adresse-vérifiée@exemple.be",
-    "BREVO_SENDER_NAME": "Ô'resto (démonstration)"
+    "BREVO_SENDER_NAME": "Ô'resto (démonstration)",
+
+    "ADMIN_PASSWORD": "un-mot-de-passe-long-et-unique"
   }
 }
