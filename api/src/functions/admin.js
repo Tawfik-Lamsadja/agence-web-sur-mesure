@@ -200,6 +200,7 @@ app.http('adminCommandes', {
           pieces: e.pieces,
           note: e.note || '',
           statut: e.statut || 'enregistree',
+          jour,
           creeLe: e.creeLe
         });
       }
@@ -210,7 +211,8 @@ app.http('adminCommandes', {
       return json(200, {
         jour,
         commandes: liste,
-        enAttente: liste.filter((c) => c.statut === 'enregistree').length
+        /* Tout ce qui n'est pas servi reste du travail à faire. */
+        enAttente: liste.filter((c) => c.statut !== 'servie').length
       });
     } catch (e) {
       contexte.error(`Lecture des commandes impossible : ${e.message}`);
@@ -219,10 +221,19 @@ app.http('adminCommandes', {
   }
 });
 
-app.http('adminCommandeServie', {
+/* Les trois états d'une commande en salle, et l'horodatage que chacun pose.
+   Le client suit cette progression depuis sa place : sans l'état intermédiaire
+   il verrait « reçue » puis « servie » d'un coup, ce qui n'apprend rien. */
+const ETATS = {
+  enregistree: null,
+  preparation: 'prepareeLe',
+  servie: 'servieLe'
+};
+
+app.http('adminCommandeStatut', {
   methods: ['POST'],
   authLevel: 'anonymous',
-  route: 'gestion/commande/servie',
+  route: 'gestion/commande/statut',
   handler: async (request, contexte) => {
     const refuse = admin.refus(request);
     if (refuse) return refuse;
@@ -232,16 +243,23 @@ app.http('adminCommandeServie', {
 
     const jour = texte(corps.jour, 10);
     const reference = texte(corps.reference, 40);
+    const statut = texte(corps.statut, 20);
+
     if (!S.dateValide(jour) || !reference) {
       return erreur(400, 'parametres_manquants', 'Jour et référence attendus.');
     }
+    if (!Object.prototype.hasOwnProperty.call(ETATS, statut)) {
+      return erreur(400, 'statut_invalide',
+        `État inconnu. Attendu : ${Object.keys(ETATS).join(', ')}.`);
+    }
+
+    const maj = { partitionKey: `salle-${jour}`, rowKey: reference, statut };
+    const horodate = ETATS[statut];
+    if (horodate) maj[horodate] = new Date().toISOString();
 
     try {
-      await commandes().updateEntity(
-        { partitionKey: `salle-${jour}`, rowKey: reference, statut: 'servie', servieLe: new Date().toISOString() },
-        'Merge'
-      );
-      return json(200, { reference, statut: 'servie' });
+      await commandes().updateEntity(maj, 'Merge');
+      return json(200, { reference, statut });
     } catch (e) {
       if (estAbsent(e)) return erreur(404, 'commande_inconnue', 'Cette commande n’existe plus.');
       contexte.error(`Marquage impossible : ${e.message}`);

@@ -146,7 +146,10 @@ async function commandeSalle(corps, request, contexte) {
     tableNom: table.nom,
     articles: lignes,
     totalCents: total,
-    pieces
+    pieces,
+    /* De quoi suivre la commande sans compte ni session : le jeton porte le
+       jour, la référence et la signature qui les lie. */
+    suivi: qr.jetonSuivi(jour, reference)
   });
 }
 

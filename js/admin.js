@@ -168,8 +168,9 @@
 
     liste.forEach(function (c) {
       var servie = c.statut === 'servie';
+      var enPrep = c.statut === 'preparation';
       var bloc = document.createElement('article');
-      bloc.className = 'adm-cmd' + (servie ? ' est-servie' : '');
+      bloc.className = 'adm-cmd' + (servie ? ' est-servie' : '') + (enPrep ? ' est-en-prep' : '');
 
       var tete = document.createElement('header');
       tete.className = 'adm-cmd__head';
@@ -207,28 +208,39 @@
       var pied = document.createElement('div');
       pied.className = 'adm-cmd__pied';
 
-      if (servie) {
-        var fait = document.createElement('p');
-        fait.className = 'adm-cmd__servie';
-        fait.textContent = 'Servie';
-        pied.appendChild(fait);
-      } else {
+      /* L'état courant se lit à gauche, les gestes possibles à droite. */
+      var etat = document.createElement('p');
+      etat.className = 'adm-cmd__etat';
+      etat.textContent = servie ? 'Servie' : enPrep ? 'En préparation' : 'Reçue';
+      pied.appendChild(etat);
+
+      /* Marche en avant seulement : on ne propose que l'étape suivante, celle
+         qu'on vient de franchir n'a pas à être reproposée. */
+      function bouton(libelle, statut, classe) {
         var b = document.createElement('button');
         b.type = 'button';
-        b.className = 'btn btn--solid';
-        b.textContent = 'Marquer servie';
+        b.className = 'btn ' + classe;
+        b.textContent = libelle;
         b.addEventListener('click', function () {
           b.disabled = true;
           b.textContent = 'Enregistrement…';
-          requete('POST', 'gestion/commande/servie', { jour: c.jour || jourDe(c.creeLe), reference: c.reference })
-            .then(chargeCommandes, function (e) {
-              b.disabled = false;
-              b.textContent = 'Marquer servie';
-              if (gere(e)) return;
-              dit(elErreur, e.message);
-            });
+          requete('POST', 'gestion/commande/statut', {
+            jour: c.jour || jourDe(c.creeLe),
+            reference: c.reference,
+            statut: statut
+          }).then(chargeCommandes, function (e) {
+            b.disabled = false;
+            b.textContent = libelle;
+            if (gere(e)) return;
+            dit(elErreur, e.message);
+          });
         });
-        pied.appendChild(b);
+        return b;
+      }
+
+      if (!servie) {
+        if (!enPrep) pied.appendChild(bouton('En préparation', 'preparation', 'btn--outline'));
+        pied.appendChild(bouton('Servie', 'servie', 'btn--solid'));
       }
 
       bloc.appendChild(pied);

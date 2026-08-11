@@ -1695,13 +1695,17 @@
       }).then(function (rep) {
         envoiEnCours = false;
         elValider.textContent = libelleValider();
+        var titre = $('#o-done-titre');
+        if (titre) titre.textContent = 'Commande envoyée.';
         $('#o-ref').textContent = rep.reference;
         $('#o-done-text').textContent =
           rep.pieces + ' article' + (rep.pieces > 1 ? 's' : '') + ', ' + prix(rep.totalCents) +
-          '. Le comptoir prépare, on vous apporte ça à ' + rep.tableNom.toLowerCase() +
+          '. On vous apporte ça à ' + rep.tableNom.toLowerCase() +
           '. Le paiement se fait en fin de repas.';
         dessineFidelite('o-fid', null);
         elFini.hidden = false;
+        /* La confirmation devient le suivi, et l'adresse de la page le lien. */
+        if (rep.suivi) suivi.ouvre(rep.suivi, rep.reference, 'enregistree');
         say('Commande envoyée à la table, numéro ' + rep.reference);
       }, function (e) {
         envoiEnCours = false;
@@ -1806,6 +1810,19 @@
       /* Le nom de la table n'arrive qu'après la réponse du serveur : le
          bouton d'envoi se relit à ce moment-là. */
       majLibelle: function () { if (elValider && !envoiEnCours) elValider.textContent = libelleValider(); },
+      /* Le client veut commander autre chose : le panier repart vide et la
+         carte réapparaît, pendant que le suivi continue en veille. */
+      videEtRouvre: function () {
+        if (elFini) elFini.hidden = true;
+        lignes = {};
+        dessine();
+        fermeTiroir();
+      },
+      /* Retour au suivi depuis la veille. */
+      montreSuivi: function () {
+        if (elFini) elFini.hidden = false;
+        ouvreTiroir();
+      },
       tiroirOuvert: function () { return !!elTiroir && elTiroir.classList.contains('is-open'); }
     };
   })();
@@ -1825,6 +1842,11 @@
     if (retrait) retrait.hidden = true;
     var contact = $('#cart-contact');
     if (contact) contact.hidden = true;
+
+    /* Le titre parlait d'emporter alors que le client est assis : il annonce
+       maintenant ce qu'il fait vraiment. */
+    var titre = $('#commander-titre', feuille);
+    if (titre) titre.textContent = 'Commander sur place';
 
     var entete = $('.sheet__pickup', feuille);
     if (entete) entete.textContent = table.nom + ' · votre commande part droit au comptoir.';
@@ -1857,6 +1879,176 @@
       say(e.message);
     });
   }
+
+  /* ===================================================================
+     9 ter. Le suivi de la commande à table
+
+     Trois états : reçue, en préparation, servie. Le client les voit depuis sa
+     place, sans compte ni session : le jeton signé qu'il porte dans l'adresse
+     de la page lui ouvre sa commande, et rien d'autre.
+
+     Le suivi ne vit pas sur une page à part. L'écran de confirmation devient
+     le suivi, et l'adresse de la page devient le lien : recharger, rouvrir le
+     téléphone, mettre en favori ou envoyer le lien à son voisin de table
+     reprend le suivi au bon endroit. Rien à cliquer, rien à perdre.
+
+     S'il referme pour commander autre chose, une veille en bas d'écran garde
+     l'état sous les yeux.
+     =================================================================== */
+  var SUIVI = {
+    /* Intervalle entre deux relectures. Un plat ne change pas d'état toutes
+       les secondes : plus court n'apprendrait rien et userait la batterie. */
+    periodeMs: 12000,
+    /* Ce que chaque état affiche, et où il place le trait de progression. */
+    etats: {
+      enregistree: { rang: 0, avance: 0,   dit: 'Le comptoir a votre commande.' },
+      preparation: { rang: 1, avance: 0.5, dit: 'C\'est en préparation.' },
+      servie:      { rang: 2, avance: 1,   dit: 'Servie. Bon appétit.' }
+    },
+    ordre: ['enregistree', 'preparation', 'servie']
+  };
+
+  var suivi = (function () {
+    var jeton = null;
+    var etatCourant = null;
+    var minuterie = null;
+
+    var elBloc, elEtapes, elDit, elTitre, elCopier, elEncore;
+    var elVeille, elVeilleRef, elVeilleEtat;
+
+    function lien() {
+      return jeton ? location.origin + location.pathname + location.search : '';
+    }
+
+    /* L'adresse de la page porte le jeton : c'est elle, le lien de suivi. */
+    function poseDansAdresse() {
+      var p = new URLSearchParams(location.search);
+      if (p.get('suivi') === jeton) return;
+      p.set('suivi', jeton);
+      history.replaceState(null, '', location.pathname + '?' + p.toString() + location.hash);
+    }
+
+    function dessine(etat, reference) {
+      var conf = SUIVI.etats[etat] || SUIVI.etats.enregistree;
+
+      if (elEtapes) {
+        elEtapes.style.setProperty('--suivi-avance', conf.avance);
+        $$('li', elEtapes).forEach(function (li) {
+          var rang = SUIVI.ordre.indexOf(li.getAttribute('data-etat'));
+          li.classList.toggle('est-faite', rang <= conf.rang);
+          li.classList.toggle('est-en-cours', rang === conf.rang && etat !== 'servie');
+        });
+      }
+      if (elDit) elDit.textContent = conf.dit;
+
+      if (elVeille) {
+        elVeille.hidden = false;
+        elVeille.classList.toggle('est-servie', etat === 'servie');
+        elVeilleRef.textContent = reference || '';
+        elVeilleEtat.textContent = etat === 'enregistree' ? 'Reçue'
+          : etat === 'preparation' ? 'En préparation' : 'Servie';
+      }
+
+      if (etat !== etatCourant) {
+        etatCourant = etat;
+        say('Commande ' + (elVeilleEtat ? elVeilleEtat.textContent.toLowerCase() : etat));
+      }
+    }
+
+    function relit() {
+      if (!jeton) return;
+      API.get('suivi?s=' + encodeURIComponent(jeton)).then(function (c) {
+        dessine(c.statut, c.reference);
+        /* Servie : le voyage est fini, plus rien à demander au serveur. */
+        if (c.statut === 'servie') arreteMinuterie();
+      }, function (e) {
+        /* Une commande introuvable ou un lien périmé n'a pas à clignoter en
+           boucle : on cesse de demander et on laisse ce qui est affiché. */
+        if (e.statut === 404 || e.statut === 403) arreteMinuterie();
+      });
+    }
+
+    function arreteMinuterie() {
+      if (minuterie) { clearInterval(minuterie); minuterie = null; }
+    }
+
+    function lanceMinuterie() {
+      arreteMinuterie();
+      minuterie = setInterval(function () {
+        if (document.hidden) return; /* onglet caché : rien à rafraîchir */
+        relit();
+      }, SUIVI.periodeMs);
+    }
+
+    function ouvre(nouveauJeton, reference, etat) {
+      jeton = nouveauJeton;
+      poseDansAdresse();
+
+      if (elBloc) elBloc.hidden = false;
+      dessine(etat || 'enregistree', reference || '');
+      lanceMinuterie();
+      /* Un retour d'onglet doit montrer l'état réel, pas celui d'il y a dix
+         minutes : on relit sans attendre le prochain battement. */
+      relit();
+    }
+
+    return {
+      init: function () {
+        elBloc   = $('#o-suivi');
+        elEtapes = $('#o-suivi-etapes');
+        elDit    = $('#o-suivi-dit');
+        elTitre  = $('#o-done-titre');
+        elCopier = $('#o-copier');
+        elEncore = $('#o-encore');
+        elVeille     = $('#veille');
+        elVeilleRef  = $('#veille-ref');
+        elVeilleEtat = $('#veille-etat');
+
+        if (elCopier) {
+          elCopier.addEventListener('click', function () {
+            var url = lien();
+            if (!url) return;
+            var fini = function () {
+              elCopier.textContent = 'Lien copié';
+              setTimeout(function () { elCopier.textContent = 'Copier le lien'; }, 2200);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(url).then(fini, function () { say(url); });
+            } else {
+              say(url);
+            }
+          });
+        }
+
+        if (elEncore) {
+          elEncore.addEventListener('click', function () {
+            /* Le panier repart vide, le suivi continue en veille. */
+            panier.videEtRouvre();
+          });
+        }
+
+        if ($('#veille-ouvrir')) {
+          $('#veille-ouvrir').addEventListener('click', function () {
+            demandeOuverture('commander');
+            panier.montreSuivi();
+          });
+        }
+
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden && jeton && minuterie) relit();
+        });
+      },
+      ouvre: ouvre,
+      actif: function () { return !!jeton; },
+      /* Reprise au chargement : l'adresse portait déjà un jeton. */
+      reprend: function () {
+        var j = new URLSearchParams(location.search).get('suivi');
+        if (!j) return;
+        if (elTitre) elTitre.textContent = 'Votre commande';
+        ouvre(j, '', 'enregistree');
+      }
+    };
+  })();
 
   /* ===================================================================
      10. Démarrage
@@ -2274,10 +2466,15 @@
     typoCinetique();
     reservation.init();
     panier.init();
+    suivi.init();
     bonCadeau.init();
     privatiser.init();
     feuilles();
     entrees();
+
+    /* Le téléphone rouvert, la page rechargée, le lien reçu d'un voisin de
+       table : l'adresse porte le jeton, le suivi reprend là où il en était. */
+    suivi.reprend();
 
     /* La table se tranche avant que la carte se dessine : c'est elle qui
        décide de ce qui est commandable, le ramen ne sortant pas de la maison

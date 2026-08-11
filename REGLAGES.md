@@ -221,7 +221,7 @@ distingue, et la salle a sa propre clé de partition.
 | `partitionKey` | `2026-08-11` (jour du retrait) | `salle-2026-08-11` (jour du service) |
 | `rowKey` | `EM-4K2P9` | `SA-7X1M4` |
 | `service` | `emporter` | `salle` |
-| Propre au service | `retrait`, `nom`, `tel`, `mail` | `tableId`, `tableNom` |
+| Propre au service | `retrait`, `nom`, `tel`, `mail` | `tableId`, `tableNom`, `prepareeLe`, `servieLe` |
 | Commun | `articles`, `totalCents`, `pieces`, `note`, `statut`, `creeLe` | idem |
 
 Pourquoi ainsi plutôt qu'une seconde table : un seul point d'entrée, une seule
@@ -233,7 +233,7 @@ propriété non indexée. C'est la requête qui vieillit le mieux.
 Les commandes déjà en base n'ont pas de champ `service` : le code lit leur
 absence comme « emporter ».
 
-Statuts en salle : `enregistree` → `servie`.
+Statuts en salle : `enregistree` → `preparation` → `servie`.
 
 ### Réglages
 
@@ -253,6 +253,44 @@ Statuts en salle : `enregistree` → `servie`.
 - **Le service en salle suit les heures du comptoir.** Hors service, dimanche et
   lundi compris, la commande est refusée. C'est voulu, et c'est ce qui oblige à
   figer l'horloge du banc d'essai pour vérifier le parcours.
+
+### Le suivi côté client
+
+Trois états, et pas un de plus : `enregistree` → `preparation` → `servie`.
+L'état intermédiaire existe pour que le client voie une progression ; sans lui
+il verrait « reçue » puis « servie » d'un coup, ce qui n'apprend rien.
+
+**Le suivi ne vit pas sur une page à part.** L'écran de confirmation devient le
+suivi, et l'adresse de la page devient le lien, par `history.replaceState` :
+
+```
+/?table=t3&cle=z7fXA8m7yXFb&suivi=2026-08-11.SA-SX9TT.sCVMvDrorE2v
+```
+
+Rien à cliquer, rien à perdre. Recharger, rouvrir le téléphone, mettre en
+favori ou envoyer le lien à son voisin de table reprend le suivi au bon
+endroit. Le paramètre `table` reste dans l'adresse : on peut commander à
+nouveau sans rescanner.
+
+Le jeton porte le jour, la référence et la signature qui les lie. Le jour en
+fait partie parce qu'il est la clé de partition : avec lui on lit la commande
+directement, sans la chercher.
+
+| Réglage | Où | Valeur | Effet |
+|---|---|---|---|
+| `SUIVI.periodeMs` | `js/main.js` | `12 s` | Intervalle entre deux relectures. Un plat ne change pas d'état toutes les secondes : plus court n'apprendrait rien et userait la batterie. |
+| `SUIVI.etats` | `js/main.js` | — | Le mot affiché et la position du trait pour chaque état. |
+| `ETATS` | `api/src/functions/admin.js` | — | Les états acceptés à l'écriture et l'horodatage que chacun pose (`prepareeLe`, `servieLe`). |
+
+Trois arrêts de la relecture, pour ne pas interroger le serveur dans le vide :
+commande servie (l'état est terminal), onglet caché, et lien devenu invalide
+(403 ou 404). Un retour d'onglet relit sans attendre le prochain battement.
+
+Si le client referme sa confirmation pour commander autre chose, une **veille**
+en bas d'écran garde l'état sous les yeux et le ramène au suivi d'un toucher.
+
+Côté comptoir, la marche est en avant seulement : on ne propose que l'étape
+suivante, celle qu'on vient de franchir n'ayant pas à être reproposée.
 
 ### La planche imprimée
 

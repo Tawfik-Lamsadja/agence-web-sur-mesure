@@ -1469,6 +1469,155 @@ p { max-width: var(--w-text); }
 .cart__done[hidden] { display: none; }
 .cart__done .enso--seal { width: 76px; margin-bottom: var(--s-4); color: var(--c-shu); }
 
+/* ====================== 14 bis. SUIVI DE COMMANDE =======================
+   Trois états, jamais plus : reçue, en préparation, servie. Le trait qui les
+   relie se remplit à mesure. C'est la seule chose que le client regarde en
+   attendant son plat, elle doit se lire d'un coup d'œil de loin. */
+.suivi {
+  margin: var(--s-4) 0 var(--s-3);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--c-line);
+  text-align: left;
+}
+
+.suivi__etapes {
+  list-style: none;
+  margin: 0 0 var(--s-3);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  position: relative;
+}
+/* Le rail, derrière les points. */
+.suivi__etapes::before {
+  content: "";
+  position: absolute;
+  left: 16.66%;
+  right: 16.66%;
+  top: 7px;
+  height: 1px;
+  background: var(--c-line-strong);
+}
+/* La part parcourue, pilotée par --suivi-avance (0, 0.5 ou 1). */
+.suivi__etapes::after {
+  content: "";
+  position: absolute;
+  left: 16.66%;
+  width: calc((100% - 33.32%) * var(--suivi-avance, 0));
+  top: 7px;
+  height: 1px;
+  background: var(--c-shu);
+  transition: width var(--t-slow) var(--e-out);
+}
+
+.suivi__etapes li {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-1);
+  position: relative;
+  z-index: 1;
+}
+.suivi__point {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--c-plum-900);
+  border: 1px solid var(--c-line-strong);
+  transition: background var(--t-mid) var(--e-soft),
+              border-color var(--t-mid) var(--e-soft),
+              transform var(--t-mid) var(--e-out);
+}
+.suivi__mot {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-bone-dim);
+  text-align: center;
+  transition: color var(--t-mid) var(--e-soft);
+}
+
+.suivi__etapes li.est-faite .suivi__point {
+  background: var(--c-shu);
+  border-color: var(--c-shu);
+}
+.suivi__etapes li.est-faite .suivi__mot { color: var(--c-bone); }
+
+/* L'étape en cours respire, pour qu'on voie que ça travaille. */
+.suivi__etapes li.est-en-cours .suivi__point {
+  background: var(--c-shu);
+  border-color: var(--c-shu);
+  animation: bat 2.2s var(--e-soft) infinite;
+}
+@keyframes bat {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(192, 73, 43, 0.5); }
+  50%      { transform: scale(1.12); box-shadow: 0 0 0 7px rgba(192, 73, 43, 0); }
+}
+
+.suivi__dit {
+  margin: 0 0 var(--s-3);
+  font-size: 0.88rem;
+  color: var(--c-bone-dim);
+  max-width: none;
+}
+.suivi__actions { display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.suivi__actions .btn { flex: 1 1 auto; min-height: 44px; font-size: 0.8rem; }
+
+/* ---- Veille : le rappel en bas d'écran ---- */
+.veille {
+  position: fixed;
+  left: 50%;
+  bottom: var(--s-3);
+  transform: translateX(-50%);
+  z-index: 110;
+  width: min(440px, calc(100vw - 2 * var(--s-3)));
+}
+.veille[hidden] { display: none; }
+
+.veille__bouton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 52px;
+  padding: 10px 16px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 3px;
+  background: var(--c-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 18px 40px -20px rgba(8, 5, 11, 0.95);
+  text-align: left;
+  transition: border-color var(--t-fast) var(--e-soft), transform var(--t-mid) var(--e-spring);
+}
+.veille__bouton:hover { border-color: var(--c-bone); transform: translateY(-1px); }
+
+.veille__point {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--c-shu);
+  flex: none;
+}
+.veille.est-servie .veille__point { background: var(--c-mauve); }
+
+.veille__ref {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  color: var(--c-bone-dim);
+  font-variant-numeric: tabular-nums;
+}
+.veille__etat {
+  margin-right: auto;
+  font-size: 0.9rem;
+  color: var(--c-bone);
+}
+.veille__fleche {
+  width: 8px; height: 8px;
+  border-top: 1px solid var(--c-bone-dim);
+  border-right: 1px solid var(--c-bone-dim);
+  transform: rotate(45deg);
+  flex: none;
+}
+
 /* ============================= 15. ENSŌ ================================= */
 .enso { width: 100%; height: auto; }
 /* Le trait plein : uniquement les <use> posés directement dans le svg.
@@ -1834,6 +1983,9 @@ p { max-width: var(--w-text); }
 
   .seuil__media .media__el { animation: none; transform: none; }
   .seuil__cue-line::after { display: none; }
+  /* Le point de l'étape en cours cesse de battre : l'état reste lisible à sa
+     couleur, le mouvement n'apportait qu'un rappel. */
+  .suivi__etapes li.est-en-cours .suivi__point { animation: none; }
 
   /* Le voyage se réduit à son aboutissement : le seuil reste un premier écran
      ordinaire, l'anneau du Ô ne se dévide pas, puis viennent la dernière image

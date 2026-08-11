@@ -91,6 +91,9 @@
   padding: var(--s-3);
   margin-bottom: var(--s-2);
 }
+/* En préparation : le liseré passe au mauve, la commande est prise en main
+   mais pas finie. Servie : elle s'efface sans disparaître. */
+.adm-cmd.est-en-prep { border-left-color: var(--c-mauve); }
 .adm-cmd.est-servie {
   border-left-color: var(--c-line-strong);
   opacity: 0.5;
@@ -134,17 +137,22 @@
 }
 .adm-cmd__pied {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--s-2);
   margin-top: var(--s-3);
 }
 .adm-cmd__pied .btn { min-height: 42px; font-size: 0.8rem; }
-.adm-cmd__servie {
-  margin: 0;
+/* L'état courant tient la gauche, les gestes possibles la droite. */
+.adm-cmd__etat {
+  margin: 0 auto 0 0;
   font-size: 0.74rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--c-bone-dim);
 }
+.adm-cmd.est-en-prep .adm-cmd__etat { color: var(--c-mauve); }
 
 /* ---- Catégorie ---- */
 .adm-cat {

@@ -531,9 +531,25 @@
 
     <div class="cart__done" id="cart-done" hidden>
       <svg class="enso enso--seal" viewBox="0 0 240 240" aria-hidden="true" focusable="false"><use href="#ensoShape"></use></svg>
-      <h3 class="display display--m">Commande enregistrée.</h3>
+      <h3 class="display display--m" id="o-done-titre">Commande enregistrée.</h3>
       <p class="done__ref">Numéro <strong id="o-ref"></strong></p>
       <p class="done__text" id="o-done-text"></p>
+
+      <!-- Suivi d'une commande à table. L'adresse de la page porte le jeton :
+           recharger, mettre en favori ou partager reprend le suivi ici. -->
+      <div class="suivi" id="o-suivi" hidden>
+        <ol class="suivi__etapes" id="o-suivi-etapes">
+          <li data-etat="enregistree"><span class="suivi__point"></span><span class="suivi__mot">Reçue</span></li>
+          <li data-etat="preparation"><span class="suivi__point"></span><span class="suivi__mot">En préparation</span></li>
+          <li data-etat="servie"><span class="suivi__point"></span><span class="suivi__mot">Servie</span></li>
+        </ol>
+        <p class="suivi__dit" id="o-suivi-dit" role="status" aria-live="polite"></p>
+        <div class="suivi__actions">
+          <button type="button" class="btn btn--ghost" id="o-copier">Copier le lien</button>
+          <button type="button" class="btn btn--outline" id="o-encore">Commander autre chose</button>
+        </div>
+      </div>
+
       <p class="loyalty" id="o-fid" hidden></p>
       <button type="button" class="btn btn--outline" id="cart-done-close">Fermer</button>
     </div>
@@ -698,6 +714,17 @@
     </footer>
   </div>
 </section>
+
+<!-- Veille : quand le client referme sa confirmation pour parcourir la carte,
+     l'état de sa commande reste sous les yeux, en bas de l'écran. -->
+<div class="veille" id="veille" hidden>
+  <button type="button" class="veille__bouton" id="veille-ouvrir">
+    <span class="veille__point" aria-hidden="true"></span>
+    <span class="veille__ref" id="veille-ref"></span>
+    <span class="veille__etat" id="veille-etat"></span>
+    <span class="veille__fleche" aria-hidden="true"></span>
+  </button>
+</div>
 
 <p class="sr-only" role="status" aria-live="polite" id="live"></p>
 

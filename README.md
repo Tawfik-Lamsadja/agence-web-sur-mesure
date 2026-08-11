@@ -30,6 +30,10 @@ démonstration et qu'aucun repas n'attend son destinataire.
   qui reste : plus d'heure de retrait, plus de coordonnées, plus de promesse
   d'e-mail. Un seul bouton, « Envoyer à table 3 ». Le ramen, qui ne quitte pas
   la maison, redevient commandable puisqu'on y est.
+- **Suivi de la commande** : reçue, en préparation, servie. L'écran de
+  confirmation devient le suivi, et l'adresse de la page devient le lien : ni
+  compte, ni page à part, ni bouton à trouver. Recharger, rouvrir son téléphone
+  ou envoyer le lien à son voisin de table reprend le suivi au bon endroit.
 - **Back-office** : sur `/admin`, le restaurateur modifie sa carte et voit
   arriver les commandes à table pendant le service.
 
@@ -98,12 +102,13 @@ Deux conséquences de ce modèle méritent d'être connues :
 | `POST /api/reservations` | Enregistre une réservation, envoie la confirmation |
 | `POST /api/orders` | Enregistre une commande à emporter, envoie la confirmation |
 | `GET /api/table?id=…&cle=…` | Nomme la table d'un code QR, refuse un lien forgé |
+| `GET /api/suivi?s=…` | L'état d'une commande à table, sur jeton signé |
 | `POST /api/gestion/session` | Vérifie le mot de passe du back-office, délivre un jeton |
 | `GET /api/gestion/carte` | La carte telle qu'on l'édite, jeton exigé |
 | `POST /api/gestion/plat` | Ajoute ou modifie un plat, jeton exigé |
 | `DELETE /api/gestion/plat` | Retire un plat, jeton exigé |
 | `GET /api/gestion/commandes` | Les commandes à table du jour, jeton exigé |
-| `POST /api/gestion/commande/servie` | Marque une commande servie, jeton exigé |
+| `POST /api/gestion/commande/statut` | Fait avancer une commande, jeton exigé |
 | `GET /api/gestion/qr` | Les liens signés des six tables, jeton exigé |
 
 `POST /api/orders` sert les deux services. La présence d'un `tableId` fait
