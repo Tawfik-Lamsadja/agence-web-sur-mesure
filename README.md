@@ -36,6 +36,10 @@ démonstration et qu'aucun repas n'attend son destinataire.
   ou envoyer le lien à son voisin de table reprend le suivi au bon endroit.
 - **Back-office** : sur `/admin`, le restaurateur modifie sa carte et voit
   arriver les commandes à table pendant le service.
+- **Écran de cuisine** : sur `/cuisine`, une tablette en paysage affiche la
+  file des commandes, la plus ancienne en tête. Un ticket tombe et sonne à
+  chaque arrivée, deux touches larges le font avancer, et il quitte l'écran
+  une fois servi. Son propre code d'accès, qui n'ouvre rien d'autre.
 
 Les deux parcours sont indépendants, atteignables par deux boutons distincts
 dans l'en-tête, et adressables directement par `#reserver` et `#commander`.
@@ -104,6 +108,7 @@ Deux conséquences de ce modèle méritent d'être connues :
 | `GET /api/table?id=…&cle=…` | Nomme la table d'un code QR, refuse un lien forgé |
 | `GET /api/suivi?s=…` | L'état d'une commande à table, sur jeton signé |
 | `POST /api/gestion/session` | Vérifie le mot de passe du back-office, délivre un jeton |
+| `POST /api/cuisine/session` | Vérifie le code de cuisine, délivre un jeton de portée réduite |
 | `GET /api/gestion/carte` | La carte telle qu'on l'édite, jeton exigé |
 | `POST /api/gestion/plat` | Ajoute ou modifie un plat, jeton exigé |
 | `DELETE /api/gestion/plat` | Retire un plat, jeton exigé |
@@ -196,6 +201,7 @@ déployée. Dans *Configuration*, ajouter les variables d'application :
 | `BREVO_SENDER_NAME` | `Ô'resto (démonstration)` |
 | `ADMIN_PASSWORD` | le mot de passe du back-office, voir l'étape 5 |
 | `QR_SECRET` | la clé de signature des codes de table, voir l'étape 6 |
+| `KITCHEN_PASSWORD` | le code de l'écran de cuisine, voir l'étape 7 |
 
 Enfin, dans les *Secrets* du dépôt GitHub, déposer le jeton de déploiement de la
 Static Web App sous le nom `AZURE_STATIC_WEB_APPS_API_TOKEN`.
@@ -234,6 +240,24 @@ refusée, avec la raison affichée.
 Le service en salle suit les mêmes heures que le comptoir. Une commande envoyée
 en dehors, ou un dimanche et un lundi, est refusée : « Le service est fermé pour
 le moment. »
+
+### 7. Écran de cuisine
+
+La tablette de la cuisine ouvre **`/cuisine`** avec `KITCHEN_PASSWORD`, saisi
+sur un pavé numérique tactile. Ce code peut être court, un simple code à quatre
+chiffres : il n'ouvre que la file des commandes, jamais la carte ni les codes
+QR. Le mot de passe du back-office ouvre lui aussi cet écran, l'inverse étant
+impossible.
+
+Ce qui rend un code court acceptable ici tient en une ligne : **le jeton n'est
+pas signé avec ce code**, mais avec `KITCHEN_PASSWORD` mêlé à `ADMIN_PASSWORD`.
+Signer avec un secret de dix mille valeurs possibles reviendrait à le donner :
+quiconque intercepterait un seul jeton retrouverait le code hors ligne en
+quelques secondes. `ADMIN_PASSWORD` est donc requis même si l'on ne veut que
+l'écran de cuisine, et changer l'un des deux mots de passe révoque les sessions.
+
+La session dure douze heures et vit en `localStorage` : une tablette qui se met
+en veille ne redemande pas le code en plein coup de feu.
 
 Sans ces variables, le site répond quand même : la carte et les disponibilités
 échouent proprement avec un message, et une réservation enregistrée dont

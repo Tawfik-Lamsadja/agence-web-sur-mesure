@@ -1,0 +1,325 @@
+/* =========================================================================
+   Ô'resto · écran de cuisine
+
+   Une tablette posée en paysage, à un mètre, sous une hotte. Tout est calibré
+   pour ça : caractères larges, cibles tactiles généreuses, contraste franc.
+   La feuille du site est chargée avant celle-ci et fournit les variables ;
+   on ne redéclare rien, mais on ne reprend pas non plus ses tailles, faites
+   pour un visiteur assis devant son écran.
+   ========================================================================= */
+
+.cui {
+  background: var(--c-void);
+  color: var(--c-bone);
+  overflow: hidden;
+  /* Le pouce ne doit pas tirer la page vers le bas pendant le service. */
+  overscroll-behavior: none;
+}
+
+/* ============================== La porte ================================ */
+.cui__porte {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--s-4);
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--c-plum-800) 0%, transparent 60%),
+    var(--c-void);
+}
+.cui__porte[hidden] { display: none; }
+
+.cui__porte-boite {
+  width: min(420px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: var(--s-2);
+  text-align: center;
+}
+.cui__mark { margin-bottom: var(--s-1); }
+.cui__titre {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 2.6rem;
+  line-height: 1;
+}
+.cui__aide { margin: 0 0 var(--s-3); color: var(--c-bone-dim); font-size: 1rem; }
+
+#cui-form { display: grid; justify-items: stretch; gap: var(--s-3); width: 100%; }
+
+#cui-code {
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 18px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 4px;
+  background: var(--c-plum-900);
+  color: var(--c-bone);
+  font-family: var(--f-ui);
+  font-size: 1.9rem;
+  letter-spacing: 0.5em;
+  text-align: center;
+}
+#cui-code:focus { border-color: var(--c-mauve); outline: none; }
+
+/* Pavé numérique : dix touches, larges, sans clavier système. */
+.cui__pave {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-2);
+}
+.cui__pave button {
+  min-height: 66px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 4px;
+  background: var(--c-plum-900);
+  color: var(--c-bone);
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--t-fast) var(--e-soft);
+}
+.cui__pave button:active { background: var(--c-plum-700); }
+.cui__pave button[data-touche="effacer"] { font-size: 1rem; letter-spacing: 0.1em; }
+
+.cui__entrer {
+  min-height: 68px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--c-shu);
+  color: var(--c-on-shu);
+  font-family: var(--f-ui);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cui__entrer:disabled { opacity: 0.4; }
+
+.cui__erreur {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 2px solid var(--c-err);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--c-err);
+  font-size: 1rem;
+}
+
+/* ============================== L'écran ================================= */
+.cui__ecran {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+}
+.cui__ecran[hidden] { display: none; }
+
+.cui__barre {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-4);
+  border-bottom: 1px solid var(--c-line);
+  background: var(--c-plum-950);
+}
+.cui__enseigne {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 1.5rem;
+}
+.cui__enseigne span {
+  font-family: var(--f-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--c-mauve);
+  margin-left: var(--s-1);
+}
+.cui__compte {
+  margin: 0 auto 0 0;
+  font-size: 1.05rem;
+  color: var(--c-bone-dim);
+  font-variant-numeric: tabular-nums;
+}
+.cui__bouton-barre {
+  min-height: 46px;
+  padding: 10px 20px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--c-bone-dim);
+  font-size: 0.86rem;
+  letter-spacing: 0.1em;
+}
+.cui__bouton-barre[aria-pressed="false"] { opacity: 0.45; text-decoration: line-through; }
+
+.cui__panne {
+  flex: none;
+  margin: 0;
+  padding: 12px var(--s-4);
+  background: rgba(224, 113, 91, 0.14);
+  border-bottom: 1px solid var(--c-err);
+  color: var(--c-err);
+  font-size: 0.95rem;
+}
+
+/* La file : des colonnes qui se remplissent, la plus ancienne en haut à
+   gauche. Sur une tablette en paysage, deux à trois tickets tiennent de
+   front sans qu'on ait à faire défiler pendant le coup de feu. */
+.cui__file {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  align-content: start;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4) var(--s-6);
+}
+
+.cui__vide {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 2rem;
+  color: var(--c-mauve-dim);
+}
+.cui__vide[hidden] { display: none; }
+
+/* ============================== Le ticket =============================== */
+.tick {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--c-line);
+  border-top: 4px solid var(--c-shu);
+  background: var(--c-plum-950);
+  padding: var(--s-3);
+}
+.tick.est-en-prep { border-top-color: var(--c-mauve); }
+
+/* Le ticket qui tombe. */
+@keyframes tombe {
+  from { opacity: 0; transform: translateY(-28px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.tick.est-neuf { animation: tombe 420ms var(--e-out); }
+
+/* Servie : le ticket s'efface avant de quitter la file. */
+@keyframes retire {
+  to { opacity: 0; transform: scale(0.97); }
+}
+.tick.est-partante { animation: retire 700ms var(--e-soft) forwards; pointer-events: none; }
+
+.tick__tete {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+}
+.tick__ou {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 1.9rem;
+  line-height: 1.05;
+}
+.tick__heure {
+  margin: 0 0 0 auto;
+  font-size: 1.05rem;
+  color: var(--c-bone-dim);
+  font-variant-numeric: tabular-nums;
+}
+.tick__meta {
+  margin: 0 0 var(--s-3);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-mauve);
+}
+
+.tick__lignes {
+  list-style: none;
+  margin: 0 0 var(--s-3);
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  flex: 1;
+}
+.tick__lignes li {
+  display: flex;
+  gap: var(--s-2);
+  font-size: 1.25rem;
+  line-height: 1.3;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--c-line);
+}
+.tick__qte {
+  flex: none;
+  min-width: 2.1em;
+  font-weight: 700;
+  color: var(--c-shu-hi);
+  font-variant-numeric: tabular-nums;
+}
+
+.tick__note {
+  margin: 0 0 var(--s-3);
+  padding: 10px 12px;
+  background: rgba(169, 140, 184, 0.12);
+  border-left: 2px solid var(--c-mauve);
+  font-size: 1rem;
+  color: var(--c-bone);
+}
+
+/* Deux cibles larges, au doigt, sans viser. */
+.tick__gestes { display: grid; gap: var(--s-2); }
+.tick__geste {
+  min-height: 62px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-family: var(--f-ui);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--e-soft), opacity var(--t-fast) var(--e-soft);
+}
+.tick__geste--prep {
+  background: transparent;
+  border-color: var(--c-line-strong);
+  color: var(--c-bone);
+}
+.tick__geste--prep:active { background: var(--c-plum-700); }
+.tick__geste--servie {
+  background: var(--c-shu);
+  color: var(--c-on-shu);
+}
+.tick__geste--servie:active { background: var(--c-shu-deep); }
+.tick__geste:disabled { opacity: 0.45; }
+
+/* ============================ Adaptatif ================================= */
+@media (max-width: 720px) {
+  .cui__file { grid-template-columns: minmax(0, 1fr); }
+  .cui__barre { flex-wrap: wrap; }
+  .tick__ou { font-size: 1.6rem; }
+  .tick__lignes li { font-size: 1.1rem; }
+}
+
+/* ======================== Mouvement réduit ==============================
+   Le ticket ne tombe plus, il se révèle. Le signal sonore, lui, reste : une
+   alerte audible n'est pas un problème de mouvement, et c'est justement elle
+   qui évite d'avoir à fixer l'écran. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes tombe {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .tick.est-neuf { animation: tombe 260ms linear; }
+  .tick.est-partante { animation: retire 400ms linear forwards; }
+  @keyframes retire { to { opacity: 0; } }
+}

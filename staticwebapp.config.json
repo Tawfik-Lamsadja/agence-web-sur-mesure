@@ -2,7 +2,7 @@
   "platform": { "apiRuntime": "node:20" },
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/api/*", "/assets/*", "/css/*", "/js/*", "/admin*", "/qr*", "*.{svg,ico,png,jpg,jpeg,webp,avif,mp4,webm}"]
+    "exclude": ["/api/*", "/assets/*", "/css/*", "/js/*", "/admin*", "/qr*", "/cuisine*", "*.{svg,ico,png,jpg,jpeg,webp,avif,mp4,webm}"]
   },
   "mimeTypes": {
     ".svg": "image/svg+xml",
@@ -20,6 +20,8 @@
     { "route": "/api/*", "headers": { "Cache-Control": "no-store" } },
     { "route": "/admin", "rewrite": "/admin.html" },
     { "route": "/qr", "rewrite": "/qr.html" },
+    { "route": "/cuisine", "rewrite": "/cuisine.html" },
+    { "route": "/cuisine*", "headers": { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } },
     { "route": "/admin*", "headers": { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } },
     { "route": "/qr*", "headers": { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } },
     { "route": "/assets/*", "headers": { "Cache-Control": "public, max-age=2592000" } },

@@ -192,6 +192,34 @@ Page `/admin`, hors navigation publique. Réglages côté serveur :
 | `PLATS_MAX` | `api/src/functions/admin.js` | `40` | Plats par catégorie. |
 | `DUREE_CACHE_MS` | `api/src/shared/menu.js` | `60 s` | Cache de la carte publique. Une écriture du back-office le vide dans son instance ; une autre instance peut encore servir l'ancienne carte le temps de son propre cache, d'où la mention « visible dans la minute » affichée au restaurateur. |
 
+### Les portées
+
+Deux accès, une seule mécanique. Le jeton porte sa portée en clair, et chaque
+route dit lesquelles elle accepte. La hiérarchie est **à sens unique** : le
+mot de passe du back-office ouvre l'écran de cuisine, le code de cuisine
+n'ouvre pas le back-office.
+
+| Route | `admin` | `cuisine` |
+|---|---|---|
+| `gestion/carte`, `gestion/plat` | oui | **non** |
+| `gestion/qr` | oui | **non** |
+| `gestion/commandes` | oui | oui |
+| `gestion/commande/statut` | oui | oui |
+
+La clé de signature n'est pas le mot de passe saisi :
+
+```
+admin    →  ADMIN_PASSWORD
+cuisine  →  KITCHEN_PASSWORD + "|" + ADMIN_PASSWORD
+```
+
+C'est ce détail qui autorise un code de cuisine court, même à quatre chiffres,
+sans affaiblir les jetons. Signer avec un secret de dix mille valeurs
+possibles reviendrait à le publier : un seul jeton intercepté suffirait à
+retrouver le code hors ligne, puis à en forger d'autres indéfiniment. En y
+mêlant le secret long, la clé reste hors d'atteinte, et changer l'un ou
+l'autre des deux mots de passe révoque toutes les sessions.
+
 **Les routes vivent sous `gestion/`, pas sous `admin/`.** L'hôte Azure Functions
 réserve le préfixe `admin/` pour ses propres points de contrôle
 (`admin/host/status`, `admin/functions/…`) et refuse d'indexer toute fonction
@@ -302,6 +330,40 @@ liens ; la page ne fait que les tracer.
 La feuille `css/qr.css` bascule la page en noir sur blanc à l'impression. Un
 code clair sur fond sombre ne se scanne pas de façon fiable : ici c'est
 l'impression qui commande, pas la palette.
+
+## 7. L'écran de cuisine
+
+Page `/cuisine`, pensée pour une tablette en paysage posée à un mètre. Ce n'est
+pas un second système : les commandes viennent de `gestion/commandes` et les
+changements d'état passent par `gestion/commande/statut`, exactement comme la
+vue du comptoir. Seules la mise en page et la cadence changent.
+
+| Réglage | Où | Valeur | Effet |
+|---|---|---|---|
+| `KITCHEN_PASSWORD` | variable d'application | — | Le code de service. Peut être court, voir la section sur les portées. |
+| `DUREES_MS.cuisine` | `api/src/shared/admin.js` | `12 h` | Durée d'une session. Choisie pour couvrir un service entier, coupures comprises. |
+| `TENTATIVES_HORAIRE` | `api/src/functions/admin.js` | `10` | Tentatives par heure et par IP, comme pour le back-office. |
+| `CUISINE.periodeMs` | `js/cuisine.js` | `6 s` | Rafraîchissement de la file. Deux fois plus vif que le suivi client : ici on veut voir tomber le ticket. |
+| `CUISINE.retraitServieMs` | `js/cuisine.js` | `6 s` | Délai avant qu'une commande servie quitte l'écran. Assez pour voir que l'appui a pris, assez court pour dégager la vue. |
+| `CUISINE.bip` | `js/cuisine.js` | 880 puis 1174 Hz, 130 ms, volume 0,16 | Deux notes courtes, fabriquées à la volée : aucun fichier à servir. |
+
+Le jeton vit en **`localStorage`** et non en `sessionStorage` : une tablette qui
+se met en veille ou un onglet refermé par mégarde ne doivent pas obliger à
+ressaisir le code en plein coup de feu.
+
+Trois points de comportement à connaître :
+
+- **Rien ne tombe à la première lecture.** Sans cette réserve, toute la file
+  s'animerait et sonnerait à chaque prise de poste.
+- **Une commande déjà servie avant l'ouverture de l'écran ne s'affiche pas du
+  tout.** Elle serait sinon apparue quelques secondes avant de repartir, à
+  chaque fois qu'on ouvre la page en cours de service.
+- **Une panne réseau ne vide pas l'écran.** Ce qui est affiché reste, un
+  bandeau signale, et la lecture suivante corrige.
+
+Le son survit à `prefers-reduced-motion` : c'est une alerte audible, pas du
+mouvement, et c'est précisément elle qui évite d'avoir à fixer l'écran. Seule
+l'entrée du ticket change, un fondu au lieu de la chute.
 
 ## Garde-fous transversaux
 

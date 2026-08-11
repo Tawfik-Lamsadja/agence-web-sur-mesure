@@ -52,8 +52,52 @@ app.http('adminSession', {
     }
 
     return json(200, {
-      jeton: admin.emetJeton(),
-      valableMs: admin.DUREE_JETON_MS
+      jeton: admin.emetJeton('admin'),
+      valableMs: admin.DUREES_MS.admin
+    });
+  }
+});
+
+/* ===================================================================
+   Ouverture de session pour l'écran de cuisine
+
+   Le même point d'entrée accepte les deux secrets : le code de cuisine
+   délivre un jeton de portée « cuisine », le mot de passe du back-office un
+   jeton de portée « admin ». C'est ce qui permet au gérant d'ouvrir l'écran
+   sans connaître le second code, sans que l'inverse soit vrai.
+   =================================================================== */
+app.http('cuisineSession', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'cuisine/session',
+  handler: async (request, contexte) => {
+    if (!admin.configure('cuisine')) {
+      return erreur(503, 'cuisine_non_configuree',
+        "L'écran de cuisine n'est pas configuré sur ce serveur : il manque KITCHEN_PASSWORD.");
+    }
+
+    const corps = await corpsJson(request);
+    if (!corps) return erreur(400, 'corps_invalide', 'Corps de requête JSON attendu.');
+
+    if (!(await quota.verifie(ipClient(request), 'cuisine', TENTATIVES_HORAIRE, contexte))) {
+      return erreur(429, 'trop_de_tentatives',
+        'Trop de tentatives depuis cette connexion. Réessayez dans une heure.');
+    }
+
+    const code = typeof corps.code === 'string' ? corps.code : '';
+    const portee = admin.codeCuisineValide(code) ? 'cuisine'
+      : admin.motDePasseValide(code) ? 'admin'
+        : null;
+
+    if (!portee) {
+      contexte.warn(`Code de cuisine refusé (${ipClient(request)}).`);
+      return erreur(401, 'code_invalide', 'Code incorrect.');
+    }
+
+    return json(200, {
+      jeton: admin.emetJeton(portee),
+      portee,
+      valableMs: admin.DUREES_MS[portee]
     });
   }
 });
@@ -173,36 +217,61 @@ function conflitEcriture(e) {
    pouvoir dire que c'est servi. La lecture porte sur une seule partition, celle
    du jour en salle : aucun balayage, et les commandes à emporter n'y sont pas.
    =================================================================== */
+/* Lit une partition de commandes et normalise ce qui en sort : les deux
+   services ne portent pas les mêmes colonnes, la file les traite pareil. */
+async function litPartition(partition, service, jour) {
+  const liste = [];
+  const entites = commandes().listEntities({
+    queryOptions: { filter: `PartitionKey eq '${partition}'` }
+  });
+
+  for await (const e of entites) {
+    liste.push({
+      reference: e.rowKey,
+      service,
+      jour,
+      tableId: e.tableId || null,
+      tableNom: e.tableNom || null,
+      retrait: e.retrait || null,
+      articles: depaquette(e.articles),
+      totalCents: e.totalCents,
+      pieces: e.pieces,
+      note: e.note || '',
+      statut: e.statut || 'enregistree',
+      creeLe: e.creeLe
+    });
+  }
+  return liste;
+}
+
 app.http('adminCommandes', {
   methods: ['GET'],
   authLevel: 'anonymous',
   route: 'gestion/commandes',
+  /* La cuisine lit cette file, elle aussi : c'est la même donnée, pas un
+     second système. Elle n'ira pas plus loin, les routes de la carte lui
+     restant fermées. */
   handler: async (request, contexte) => {
-    const refuse = admin.refus(request);
+    const refuse = admin.refus(request, ['admin', 'cuisine']);
     if (refuse) return refuse;
 
     const jour = texte(request.query.get('jour'), 10) || S.jourISO(new Date());
     if (!S.dateValide(jour)) return erreur(400, 'jour_invalide', 'Jour attendu au format AAAA-MM-JJ.');
 
-    try {
-      const liste = [];
-      const entites = commandes().listEntities({
-        queryOptions: { filter: `PartitionKey eq 'salle-${jour}'` }
-      });
+    /* Par défaut la salle seule, comme avant. L'écran de cuisine demande les
+       deux services : il prépare aussi ce qui part à emporter. */
+    const service = texte(request.query.get('service'), 10) || 'salle';
+    if (['salle', 'emporter', 'tout'].indexOf(service) === -1) {
+      return erreur(400, 'service_invalide', 'Service attendu : salle, emporter ou tout.');
+    }
 
-      for await (const e of entites) {
-        liste.push({
-          reference: e.rowKey,
-          tableId: e.tableId,
-          tableNom: e.tableNom,
-          articles: depaquette(e.articles),
-          totalCents: e.totalCents,
-          pieces: e.pieces,
-          note: e.note || '',
-          statut: e.statut || 'enregistree',
-          jour,
-          creeLe: e.creeLe
-        });
+    try {
+      let liste = [];
+      if (service === 'salle' || service === 'tout') {
+        liste = liste.concat(await litPartition(`salle-${jour}`, 'salle', jour));
+      }
+      if (service === 'emporter' || service === 'tout') {
+        liste = liste.concat(await litPartition(jour, 'emporter', jour));
       }
 
       /* La plus ancienne d'abord : c'est l'ordre dans lequel on sert. */
@@ -210,6 +279,7 @@ app.http('adminCommandes', {
 
       return json(200, {
         jour,
+        service,
         commandes: liste,
         /* Tout ce qui n'est pas servi reste du travail à faire. */
         enAttente: liste.filter((c) => c.statut !== 'servie').length
@@ -234,8 +304,9 @@ app.http('adminCommandeStatut', {
   methods: ['POST'],
   authLevel: 'anonymous',
   route: 'gestion/commande/statut',
+  /* La cuisine fait avancer les commandes : c'est tout son objet. */
   handler: async (request, contexte) => {
-    const refuse = admin.refus(request);
+    const refuse = admin.refus(request, ['admin', 'cuisine']);
     if (refuse) return refuse;
 
     const corps = await corpsJson(request);
@@ -253,7 +324,14 @@ app.http('adminCommandeStatut', {
         `État inconnu. Attendu : ${Object.keys(ETATS).join(', ')}.`);
     }
 
-    const maj = { partitionKey: `salle-${jour}`, rowKey: reference, statut };
+    /* Les deux services ne vivent pas dans la même partition. Le service est
+       transmis quand on le connaît ; à défaut le préfixe de la référence le
+       dit, « SA » pour la salle. */
+    const service = texte(corps.service, 10)
+      || (reference.slice(0, 2) === 'SA' ? 'salle' : 'emporter');
+    const partition = service === 'salle' ? `salle-${jour}` : jour;
+
+    const maj = { partitionKey: partition, rowKey: reference, statut };
     const horodate = ETATS[statut];
     if (horodate) maj[horodate] = new Date().toISOString();
 

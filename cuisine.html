@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ô'resto · Cuisine</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0C0810">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/cuisine.css">
+</head>
+<body class="cui">
+
+<!-- ============ La porte ============ -->
+<section class="cui__porte" id="cui-porte">
+  <div class="cui__porte-boite">
+    <img class="cui__mark" src="favicon.svg" alt="" width="40" height="40">
+    <h1 class="cui__titre">Cuisine</h1>
+    <p class="cui__aide">Entrez le code de service.</p>
+
+    <form id="cui-form" autocomplete="off">
+      <input type="password" id="cui-code" name="code" inputmode="numeric"
+             autocomplete="current-password" aria-label="Code de service" required>
+
+      <!-- Pavé tactile : au doigt, sans clavier système. -->
+      <div class="cui__pave" id="cui-pave" role="group" aria-label="Pavé numérique"></div>
+
+      <button type="submit" class="cui__entrer" id="cui-entrer">Entrer</button>
+    </form>
+
+    <p class="cui__erreur" id="cui-porte-erreur" role="alert" hidden></p>
+  </div>
+</section>
+
+<!-- ============ La file ============ -->
+<main class="cui__ecran" id="cui-ecran" hidden>
+  <header class="cui__barre">
+    <p class="cui__enseigne">Ô'resto <span>Cuisine</span></p>
+    <p class="cui__compte" id="cui-compte" role="status" aria-live="polite">…</p>
+    <button type="button" class="cui__bouton-barre" id="cui-son" aria-pressed="true">Son</button>
+    <button type="button" class="cui__bouton-barre" id="cui-sortir">Quitter</button>
+  </header>
+
+  <p class="cui__panne" id="cui-panne" role="alert" hidden></p>
+
+  <div class="cui__file" id="cui-file"></div>
+
+  <p class="cui__vide" id="cui-vide" hidden>Rien en attente.</p>
+</main>
+
+<script src="js/cuisine.js" defer></script>
+</body>
+</html>
