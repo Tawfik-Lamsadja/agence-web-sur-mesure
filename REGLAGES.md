@@ -365,6 +365,45 @@ Le son survit à `prefers-reduced-motion` : c'est une alerte audible, pas du
 mouvement, et c'est précisément elle qui évite d'avoir à fixer l'écran. Seule
 l'entrée du ticket change, un fondu au lieu de la chute.
 
+## 8. Retrouver un e-mail
+
+Chaque envoi transactionnel laisse son identifiant Brevo sur l'entité qu'il
+accompagne. Trois colonnes, écrites juste après l'envoi :
+
+| Colonne | Contenu |
+| --- | --- |
+| `mailEnvoye` | Brevo a-t-il accepté le message |
+| `mailMessageId` | l'identifiant rendu par Brevo, `<…@smtp-relay.mailin.fr>` |
+| `mailMotif` | vide si accepté, sinon `non_configure`, `refus_401`, `injoignable`… |
+
+Elles sont posées sur `reservations`, `commandes` (à emporter uniquement — une
+commande à table n'envoie rien), `bons` et `privatisations`.
+
+Un client dit qu'il n'a rien reçu : on lit `mailMessageId` sur sa ligne, et on
+le donne à Brevo tel quel.
+
+```
+GET https://api.brevo.com/v3/smtp/statistics/events?messageId=<l'identifiant>
+    en-tête : api-key: <BREVO_API_KEY>
+```
+
+Un `requests` seul, sans `delivered` ni rejet, veut dire que Brevo a pris le
+message et ne l'a jamais sorti. Ce n'est pas un défaut du site.
+
+**Pourquoi ces colonnes existent.** Le 11 août 2026, deux messages sur neuf ont
+disparu ainsi — acceptés, aucun événement terminal, aucun rejet. Les identifier
+a demandé de recouper les journaux Brevo par ligne de sujet, faute de lien
+entre une référence et un message. Le même contenu renvoyé seul est arrivé en
+une seconde : le pool d'IP partagées du palier gratuit perd des messages quand
+plusieurs partent coup sur coup. Le site n'y peut rien, mais il doit au moins
+pouvoir le montrer.
+
+**Ce que la trace ne fait jamais.** Elle est écrite après l'enregistrement, en
+`Merge`, et son propre échec est journalisé puis ignoré. Un achat, une
+réservation ou une commande ne peut pas échouer à cause d'un e-mail, ni à cause
+de la note qui parle de l'e-mail. La réponse rendue au client est inchangée :
+toujours le seul booléen `emailEnvoye`.
+
 ## Garde-fous transversaux
 
 - `prefers-reduced-motion` : chapitres empilés sur images fixes, pas de

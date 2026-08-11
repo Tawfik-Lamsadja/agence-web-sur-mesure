@@ -4,7 +4,7 @@ const { app } = require('@azure/functions');
 const { reservations, cleReservation, estConflit } = require('../shared/storage');
 const { json, erreur, corpsJson, ipClient } = require('../shared/http');
 const { coordonnees, entier } = require('../shared/valide');
-const { envoie, gabarit } = require('../shared/email');
+const { envoie, noteEnvoi, gabarit } = require('../shared/email');
 const quota = require('../shared/quota');
 const fidelite = require('../shared/fidelite');
 const S = require('../shared/service');
@@ -99,13 +99,14 @@ app.http('reservations', {
       ['Note', note]
     ];
 
-    const envoye = await envoie({
+    const envoi = await envoie({
       destinataire: mail,
       nom,
       sujet: `Réservation confirmée · ${reference}`,
       html: gabarit('Réservation confirmée', intro, lignes, reference, pied),
       texte: `${intro}\n\n${quand}\n${convives} couverts · ${table.nom}\nRéférence : ${reference}\n\n${pied}\n\nSite de démonstration : Ô'resto n'existe pas, aucun repas ne vous attend.`
     }, contexte);
+    await noteEnvoi(reservations(), entite.partitionKey, entite.rowKey, envoi, contexte);
 
     return json(201, {
       reference,
@@ -114,7 +115,7 @@ app.http('reservations', {
       convives,
       acompteCents: acompte,
       fidelite: compteur,
-      emailEnvoye: envoye
+      emailEnvoye: envoi.envoye
     });
   }
 });

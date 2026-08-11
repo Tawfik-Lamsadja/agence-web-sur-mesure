@@ -4,7 +4,7 @@ const { app } = require('@azure/functions');
 const { privatisations, estConflit } = require('../shared/storage');
 const { json, erreur, corpsJson, ipClient } = require('../shared/http');
 const { coordonnees, entier, texte } = require('../shared/valide');
-const { envoie, gabarit } = require('../shared/email');
+const { envoie, noteEnvoi, gabarit } = require('../shared/email');
 const quota = require('../shared/quota');
 const S = require('../shared/service');
 
@@ -106,19 +106,20 @@ app.http('privatisations', {
       ['Message', note]
     ];
 
-    const envoye = await envoie({
+    const envoi = await envoie({
       destinataire: mail,
       nom,
       sujet: `Demande de privatisation · ${reference}`,
       html: gabarit('Demande reçue', intro, lignes, reference, pied),
       texte: `${intro}\n\n${quand}\n${convives} personnes · ${TYPES.get(type)}\nRéférence : ${reference}\n\n${pied}\n\nSite de démonstration : Ô'resto n'existe pas, personne ne vous recontactera.`
     }, contexte);
+    await noteEnvoi(privatisations(), date, reference, envoi, contexte);
 
     return json(201, {
       reference,
       date, convives, type,
       typeLibelle: TYPES.get(type),
-      emailEnvoye: envoye
+      emailEnvoye: envoi.envoye
     });
   }
 });

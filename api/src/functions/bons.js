@@ -5,7 +5,7 @@ const { app } = require('@azure/functions');
 const { bons, estConflit } = require('../shared/storage');
 const { json, erreur, corpsJson, ipClient } = require('../shared/http');
 const { coordonnees, entier } = require('../shared/valide');
-const { envoie, gabarit } = require('../shared/email');
+const { envoie, noteEnvoi, gabarit } = require('../shared/email');
 const quota = require('../shared/quota');
 
 const PLAFOND_HORAIRE = 5;
@@ -117,19 +117,20 @@ app.http('bons', {
       ['Message', note]
     ];
 
-    const envoye = await envoie({
+    const envoi = await envoie({
       destinataire: mail,
       nom,
       sujet: `Bon cadeau · ${code}`,
       html: gabarit('Bon cadeau', intro, lignes, code, pied),
       texte: `${intro}\n\nMontant : ${euros(montantCents)}\nValable jusqu’au ${jusquau}\nCode : ${code}\n\n${pied}\n\nSite de démonstration : Ô'resto n'existe pas, ce bon n'a aucune valeur et aucun paiement n'a été prélevé.`
     }, contexte);
+    await noteEnvoi(bons(), PARTITION, code, envoi, contexte);
 
     return json(201, {
       code,
       montantCents,
       valableJusquau: expire.toISOString(),
-      emailEnvoye: envoye
+      emailEnvoye: envoi.envoye
     });
   }
 });

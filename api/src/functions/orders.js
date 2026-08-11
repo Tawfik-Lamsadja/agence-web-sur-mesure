@@ -4,7 +4,7 @@ const { app } = require('@azure/functions');
 const { commandes, empaquette } = require('../shared/storage');
 const { json, erreur, corpsJson, ipClient } = require('../shared/http');
 const { coordonnees, entier, texte } = require('../shared/valide');
-const { envoie, gabarit } = require('../shared/email');
+const { envoie, noteEnvoi, gabarit } = require('../shared/email');
 const menu = require('../shared/menu');
 const quota = require('../shared/quota');
 const fidelite = require('../shared/fidelite');
@@ -216,13 +216,14 @@ async function commandeEmporter(corps, request, contexte) {
   const pied = 'Présentez ce numéro au comptoir, rue de Flandre 68. Le paiement se fait sur place.';
   const detail = lignes.map((l) => [`${l.qte} × ${l.nom}`, euros(l.sousTotal)]);
 
-  const envoye = await envoie({
+  const envoi = await envoie({
     destinataire: mail,
     nom,
     sujet: `Commande à emporter · ${reference}`,
     html: gabarit('Commande enregistrée', intro, detail.concat([['Total', euros(total)], ['Retrait', quand], ['Fidélité', fidelite.mention(compteur)]]), reference, pied),
     texte: `${intro}\n\n${lignes.map((l) => `${l.qte} × ${l.nom} — ${euros(l.sousTotal)}`).join('\n')}\n\nTotal : ${euros(total)}\nRetrait : ${quand}\nRéférence : ${reference}\n\n${pied}\n\nSite de démonstration : Ô'resto n'existe pas, aucune commande ne sera préparée.`
   }, contexte);
+  await noteEnvoi(commandes(), jourRetrait, reference, envoi, contexte);
 
   return json(201, {
     reference,
@@ -232,7 +233,7 @@ async function commandeEmporter(corps, request, contexte) {
     pieces,
     retrait: retrait.toISOString(),
     fidelite: compteur,
-    emailEnvoye: envoye
+    emailEnvoye: envoi.envoye
   });
 }
 
